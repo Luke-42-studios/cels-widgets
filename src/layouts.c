@@ -117,7 +117,8 @@ void w_hint_layout(struct ecs_world_t* world, cels_entity_t self) {
     CEL_Clay(
         .layout = {
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) },
-            .padding = { .top = 1 }
+            .padding = { .top = 1 },
+            .childAlignment = { .x = CLAY_ALIGN_X_CENTER }
         }
     ) {
         CLAY_TEXT(CEL_Clay_Text(d->text, (int)strlen(d->text)),
