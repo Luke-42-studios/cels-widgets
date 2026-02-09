@@ -255,6 +255,7 @@ CEL_Composition(WNavigationGroup,
 ) {
     CEL_Has(ClayUI, .layout_fn = w_navigation_group_layout);
     CEL_Has(W_NavigationScope, .wrap = props.wrap, .direction = props.direction);
+    CEL_Has(W_Focusable);
 }
 #define Widget_NavigationGroup(...) CEL_Init(WNavigationGroup, __VA_ARGS__)
 

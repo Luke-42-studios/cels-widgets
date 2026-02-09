@@ -190,7 +190,6 @@ static void process_navigation_groups(ecs_world_t* world, const CELS_Input* inpu
 
 static void focus_system_run(CELS_Iter* it) {
     int count = cels_iter_count(it);
-    if (count == 0) return;
 
     CELS_Context* ctx = cels_get_context();
     const CELS_Input* input = cels_input_get(ctx);
@@ -199,11 +198,13 @@ static void focus_system_run(CELS_Iter* it) {
     W_FocusState_ensure();
     W_FocusState.focus_count = count;
 
-    /* Tab navigation for focus ring */
-    if (input->key_tab) {
-        W_FocusState.focus_index = (W_FocusState.focus_index + 1) % count;
-    } else if (input->key_shift_tab) {
-        W_FocusState.focus_index = (W_FocusState.focus_index - 1 + count) % count;
+    /* Tab navigation for focus ring (only when focusable entities exist) */
+    if (count > 0) {
+        if (input->key_tab) {
+            W_FocusState.focus_index = (W_FocusState.focus_index + 1) % count;
+        } else if (input->key_shift_tab) {
+            W_FocusState.focus_index = (W_FocusState.focus_index - 1 + count) % count;
+        }
     }
 
     /* Process NavigationGroup entities for arrow key selection cycling */
