@@ -456,7 +456,7 @@ void w_progress_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
     if (v < 0.0f) v = 0.0f;
     if (v > 1.0f) v = 1.0f;
 
-    Clay_Color fill_color = t->progress_fill;
+    Clay_Color fill_color = t->progress_fill.color;
     if (d->color_by_value) {
         if (v < 0.33f)      fill_color = t->error;
         else if (v < 0.66f) fill_color = t->warning;
@@ -593,14 +593,14 @@ void w_divider_layout(struct ecs_world_t* world, cels_entity_t self) {
             .layout = {
                 .sizing = { .width = CLAY_SIZING_FIXED(1), .height = CLAY_SIZING_GROW(0) }
             },
-            .backgroundColor = t->divider
+            .backgroundColor = t->divider.color
         ) {}
     } else {
         CEL_Clay(
             .layout = {
                 .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) }
             },
-            .backgroundColor = t->divider
+            .backgroundColor = t->divider.color
         ) {}
     }
 }
