@@ -150,8 +150,8 @@ void w_canvas_layout(struct ecs_world_t* world, cels_entity_t self) {
 
     CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
     CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border.color;
-    CEL_Color title_fg = t->primary.color;
-    CEL_TextAttr title_attr = t->primary.attr;
+    CEL_Color title_fg = t->content.color;
+    CEL_TextAttr title_attr = { .bold = true };
 
     CEL_Clay(
         .layout = {
