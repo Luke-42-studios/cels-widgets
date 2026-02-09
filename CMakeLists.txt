@@ -12,6 +12,7 @@ add_library(cels::widgets ALIAS cels-widgets)
 target_sources(cels-widgets INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/widgets.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/focus.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/behavioral.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/layouts.c
 )
 

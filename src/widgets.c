@@ -52,4 +52,7 @@ CEL_Module(Widgets) {
 
     /* Register focus system */
     widgets_focus_system_register();
+
+    /* Register behavioral systems (RangeClamp, ScrollClamp) */
+    widgets_behavioral_systems_register();
 }
