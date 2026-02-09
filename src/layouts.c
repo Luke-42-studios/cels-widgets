@@ -333,6 +333,11 @@ void w_button_layout(struct ecs_world_t* world, cels_entity_t self) {
     /* Read W_InteractState if available (set by composition macro) */
     const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
     bool disabled = ist ? ist->disabled : false;
+    bool focused = ist ? ist->focused : false;
+
+    /* Read W_Selectable for selection state (behavioral component) */
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    bool selected = sel ? sel->selected : false;
 
     W_ResolvedVisual v = w_resolve_visual(t,
         s ? s->bg : CEL_COLOR_NONE,
@@ -341,13 +346,13 @@ void w_button_layout(struct ecs_world_t* world, cels_entity_t self) {
         s ? s->border_color : CEL_COLOR_NONE,
         s ? s->border : CEL_BORDER_DEFAULT,
         CEL_BORDER_ON_SELECT,
-        d->selected, d->focused, disabled);
+        selected, focused, disabled);
 
     /* Selected-state specific overrides */
     CEL_Color final_bg = v.bg;
     CEL_Color final_fg = v.fg;
-    if (d->selected && s && s->bg_selected.a > 0) final_bg = s->bg_selected;
-    if (d->selected && s && s->fg_selected.a > 0) final_fg = s->fg_selected;
+    if (selected && s && s->bg_selected.a > 0) final_bg = s->bg_selected;
+    if (selected && s && s->fg_selected.a > 0) final_fg = s->fg_selected;
 
     /* Sizing: style override or defaults (GROW x FIXED(1)) */
     Clay_SizingAxis w_axis = s
@@ -383,7 +388,7 @@ void w_button_layout(struct ecs_world_t* world, cels_entity_t self) {
             .width = { v.show_border?1:0, v.show_border?1:0, v.show_border?1:0, v.show_border?1:0, 0 }
         }
     ) {
-        if (d->selected) {
+        if (selected) {
             CLAY_TEXT(CLAY_STRING("> "),
                 CLAY_TEXT_CONFIG({ .textColor = final_fg,
                                   .userData = w_pack_text_attr(v.text_attr) }));
@@ -403,6 +408,10 @@ void w_slider_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
     bool disabled = ist ? ist->disabled : false;
 
+    /* Read W_Selectable for selection state (behavioral component) */
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    bool selected = sel ? sel->selected : false;
+
     W_ResolvedVisual v = w_resolve_visual(t,
         s ? s->bg : CEL_COLOR_NONE,
         s ? s->fg : CEL_COLOR_NONE,
@@ -410,7 +419,7 @@ void w_slider_layout(struct ecs_world_t* world, cels_entity_t self) {
         s ? s->border_color : CEL_COLOR_NONE,
         s ? s->border : CEL_BORDER_DEFAULT,
         CEL_BORDER_NONE,
-        d->selected, false, disabled);
+        selected, false, disabled);
 
     /* Bar fill color: style override or theme primary */
     CEL_Color bar_color = (s && s->fill_color.a > 0) ? s->fill_color : t->primary.color;
@@ -462,6 +471,10 @@ void w_toggle_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
     bool disabled = ist ? ist->disabled : false;
 
+    /* Read W_Selectable for selection state (behavioral component) */
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    bool selected = sel ? sel->selected : false;
+
     W_ResolvedVisual v = w_resolve_visual(t,
         s ? s->bg : CEL_COLOR_NONE,
         s ? s->fg : CEL_COLOR_NONE,
@@ -469,7 +482,7 @@ void w_toggle_layout(struct ecs_world_t* world, cels_entity_t self) {
         s ? s->border_color : CEL_COLOR_NONE,
         s ? s->border : CEL_BORDER_DEFAULT,
         CEL_BORDER_NONE,
-        d->selected, false, disabled);
+        selected, false, disabled);
 
     const char* state_str = d->value ? "ON" : "OFF";
     /* State indicator: style overrides or theme status colors */
@@ -512,6 +525,10 @@ void w_cycle_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
     bool disabled = ist ? ist->disabled : false;
 
+    /* Read W_Selectable for selection state (behavioral component) */
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    bool selected = sel ? sel->selected : false;
+
     W_ResolvedVisual v = w_resolve_visual(t,
         s ? s->bg : CEL_COLOR_NONE,
         s ? s->fg : CEL_COLOR_NONE,
@@ -519,10 +536,10 @@ void w_cycle_layout(struct ecs_world_t* world, cels_entity_t self) {
         s ? s->border_color : CEL_COLOR_NONE,
         s ? s->border : CEL_BORDER_DEFAULT,
         CEL_BORDER_NONE,
-        d->selected, false, disabled);
+        selected, false, disabled);
 
     /* Arrow color: selected = border_focused, normal = content_muted */
-    CEL_Color arrow_color = d->selected ? t->border_focused.color : t->content_muted.color;
+    CEL_Color arrow_color = selected ? t->border_focused.color : t->content_muted.color;
 
     CEL_Clay(
         .layout = {
@@ -795,6 +812,10 @@ void w_radio_button_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
     bool disabled = ist ? ist->disabled : false;
 
+    /* Read W_Selectable for selection state (behavioral component) */
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    bool selected = sel ? sel->selected : false;
+
     W_ResolvedVisual v = w_resolve_visual(t,
         s ? s->bg : CEL_COLOR_NONE,
         s ? s->fg : CEL_COLOR_NONE,
@@ -802,11 +823,11 @@ void w_radio_button_layout(struct ecs_world_t* world, cels_entity_t self) {
         s ? s->border_color : CEL_COLOR_NONE,
         s ? s->border : CEL_BORDER_DEFAULT,
         CEL_BORDER_NONE,
-        d->selected, false, disabled);
+        selected, false, disabled);
 
-    const char* marker = d->selected ? "(*)" : "( )";
+    const char* marker = selected ? "(*)" : "( )";
     /* Use resolved fg for selected, content_muted for unselected */
-    CEL_Color text_color = d->selected ? v.fg : t->content_muted.color;
+    CEL_Color text_color = selected ? v.fg : t->content_muted.color;
     CEL_TextAttr text_attr = v.text_attr;
 
     char buf[64];
@@ -1033,6 +1054,10 @@ void w_list_item_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
     bool disabled = ist ? ist->disabled : false;
 
+    /* Read W_Selectable for selection state (behavioral component) */
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    bool selected = sel ? sel->selected : false;
+
     W_ResolvedVisual v = w_resolve_visual(t,
         s ? s->bg : CEL_COLOR_NONE,
         s ? s->fg : CEL_COLOR_NONE,
@@ -1040,7 +1065,7 @@ void w_list_item_layout(struct ecs_world_t* world, cels_entity_t self) {
         s ? s->border_color : CEL_COLOR_NONE,
         s ? s->border : CEL_BORDER_DEFAULT,
         CEL_BORDER_NONE,
-        d->selected, false, disabled);
+        selected, false, disabled);
 
     CEL_Clay(
         .layout = {
@@ -1049,7 +1074,7 @@ void w_list_item_layout(struct ecs_world_t* world, cels_entity_t self) {
         },
         .backgroundColor = v.bg
     ) {
-        if (d->selected) {
+        if (selected) {
             CLAY_TEXT(CLAY_STRING("> "),
                 CLAY_TEXT_CONFIG({ .textColor = v.fg,
                                   .userData = w_pack_text_attr(v.text_attr) }));

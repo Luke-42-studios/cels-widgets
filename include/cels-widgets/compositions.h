@@ -89,8 +89,8 @@ CEL_Composition(WTextArea, const char* text; int max_width; int max_height; bool
 CEL_Composition(WButton, const char* label; bool selected; bool focused; bool disabled;
                  void (*on_press)(void); const Widget_ButtonStyle* style;) {
     CEL_Has(ClayUI, .layout_fn = w_button_layout);
-    CEL_Has(W_Button, .label = props.label, .selected = props.selected,
-            .focused = props.focused, .on_press = props.on_press, .style = props.style);
+    CEL_Has(W_Button, .label = props.label, .on_press = props.on_press, .style = props.style);
+    CEL_Has(W_Selectable, .selected = props.selected);
     CEL_Has(W_InteractState, .selected = props.selected,
             .focused = props.focused, .disabled = props.disabled);
 }
@@ -100,8 +100,8 @@ CEL_Composition(WSlider, const char* label; float value; float min; float max;
                  bool selected; bool disabled; const Widget_SliderStyle* style;) {
     CEL_Has(ClayUI, .layout_fn = w_slider_layout);
     CEL_Has(W_Slider, .label = props.label, .value = props.value,
-            .min = props.min, .max = props.max, .selected = props.selected,
-            .style = props.style);
+            .min = props.min, .max = props.max, .style = props.style);
+    CEL_Has(W_Selectable, .selected = props.selected);
     CEL_Has(W_InteractState, .selected = props.selected, .disabled = props.disabled);
 }
 #define Widget_Slider(...) CEL_Init(WSlider, __VA_ARGS__)
@@ -109,8 +109,8 @@ CEL_Composition(WSlider, const char* label; float value; float min; float max;
 CEL_Composition(WToggle, const char* label; bool value; bool selected; bool disabled;
                  const Widget_ToggleStyle* style;) {
     CEL_Has(ClayUI, .layout_fn = w_toggle_layout);
-    CEL_Has(W_Toggle, .label = props.label, .value = props.value,
-            .selected = props.selected, .style = props.style);
+    CEL_Has(W_Toggle, .label = props.label, .value = props.value, .style = props.style);
+    CEL_Has(W_Selectable, .selected = props.selected);
     CEL_Has(W_InteractState, .selected = props.selected, .disabled = props.disabled);
 }
 #define Widget_Toggle(...) CEL_Init(WToggle, __VA_ARGS__)
@@ -118,8 +118,8 @@ CEL_Composition(WToggle, const char* label; bool value; bool selected; bool disa
 CEL_Composition(WCycle, const char* label; const char* value; bool selected; bool disabled;
                  const Widget_CycleStyle* style;) {
     CEL_Has(ClayUI, .layout_fn = w_cycle_layout);
-    CEL_Has(W_Cycle, .label = props.label, .value = props.value,
-            .selected = props.selected, .style = props.style);
+    CEL_Has(W_Cycle, .label = props.label, .value = props.value, .style = props.style);
+    CEL_Has(W_Selectable, .selected = props.selected);
     CEL_Has(W_InteractState, .selected = props.selected, .disabled = props.disabled);
 }
 #define Widget_Cycle(...) CEL_Init(WCycle, __VA_ARGS__)
@@ -175,8 +175,8 @@ CEL_Composition(WTable, int row_count; const char** keys; const char** values;
 CEL_Composition(WRadioButton, const char* label; bool selected; int group_id; bool disabled;
                  const Widget_RadioButtonStyle* style;) {
     CEL_Has(ClayUI, .layout_fn = w_radio_button_layout);
-    CEL_Has(W_RadioButton, .label = props.label, .selected = props.selected,
-            .group_id = props.group_id, .style = props.style);
+    CEL_Has(W_RadioButton, .label = props.label, .group_id = props.group_id, .style = props.style);
+    CEL_Has(W_Selectable, .selected = props.selected);
     CEL_Has(W_InteractState, .selected = props.selected, .disabled = props.disabled);
 }
 #define Widget_RadioButton(...) CEL_Init(WRadioButton, __VA_ARGS__)
@@ -233,8 +233,8 @@ CEL_Composition(WListView, int item_count; int selected_index; int scroll_offset
 CEL_Composition(WListItem, const char* label; bool selected; void* data; bool disabled;
                  const Widget_ListItemStyle* style;) {
     CEL_Has(ClayUI, .layout_fn = w_list_item_layout);
-    CEL_Has(W_ListItem, .label = props.label, .selected = props.selected,
-            .data = props.data, .style = props.style);
+    CEL_Has(W_ListItem, .label = props.label, .data = props.data, .style = props.style);
+    CEL_Has(W_Selectable, .selected = props.selected);
     CEL_Has(W_InteractState, .selected = props.selected, .disabled = props.disabled);
 }
 #define Widget_ListItem(...) CEL_Init(WListItem, __VA_ARGS__)
