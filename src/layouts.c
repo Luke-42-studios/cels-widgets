@@ -1115,7 +1115,9 @@ void w_navigation_group_layout(struct ecs_world_t* world, cels_entity_t self) {
             .sizing = {
                 .width = CLAY_SIZING_GROW(0),
                 .height = CLAY_SIZING_FIT(0)
-            }
+            },
+            .childAlignment = { .x = CLAY_ALIGN_X_CENTER },
+            .childGap = 1
         }
     ) {
         CEL_Clay_Children();
