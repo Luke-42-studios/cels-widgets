@@ -58,4 +58,7 @@ extern void w_status_bar_layout(struct ecs_world_t* world, cels_entity_t self);
 extern void w_list_view_layout(struct ecs_world_t* world, cels_entity_t self);
 extern void w_list_item_layout(struct ecs_world_t* world, cels_entity_t self);
 
+/* Navigation Group */
+extern void w_navigation_group_layout(struct ecs_world_t* world, cels_entity_t self);
+
 #endif /* CELS_WIDGETS_LAYOUTS_H */

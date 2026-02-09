@@ -54,6 +54,21 @@ CEL_Define(W_NavigationScope, {
 });
 
 /* ============================================================================
+ * Navigation State
+ * ============================================================================ */
+
+/* Navigation scope state -- tracks active navigation group for focus isolation */
+CEL_State(W_NavigationState, {
+    cels_entity_t active_scope;     /* Entity ID of active NavigationGroup (0 = global) */
+    int scope_depth;                /* Nesting depth for push/pop */
+});
+
+/* Scope management API */
+extern void widgets_nav_scope_push(cels_entity_t scope_entity);
+extern void widgets_nav_scope_pop(void);
+extern cels_entity_t widgets_nav_scope_active(void);
+
+/* ============================================================================
  * Focus System Registration
  * ============================================================================ */
 

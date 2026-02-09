@@ -30,6 +30,7 @@
 #define CELS_WIDGETS_COMPOSITIONS_H
 
 #include <cels-widgets/widgets.h>
+#include <cels-widgets/input.h>
 #include <cels-widgets/layouts.h>
 #include <cels-layout/layout.h>
 #include <cels-clay/clay_layout.h>
@@ -244,6 +245,18 @@ CEL_Composition(WListItem, const char* label; bool selected; void* data; bool di
     CEL_Has(W_InteractState, .selected = props.selected, .disabled = props.disabled);
 }
 #define Widget_ListItem(...) CEL_Init(WListItem, __VA_ARGS__)
+
+/* ============================================================================
+ * Navigation Group Compositions
+ * ============================================================================ */
+
+CEL_Composition(WNavigationGroup,
+    bool wrap; int direction; /* 0=vertical, 1=horizontal */
+) {
+    CEL_Has(ClayUI, .layout_fn = w_navigation_group_layout);
+    CEL_Has(W_NavigationScope, .wrap = props.wrap, .direction = props.direction);
+}
+#define Widget_NavigationGroup(...) CEL_Init(WNavigationGroup, __VA_ARGS__)
 
 /* ============================================================================
  * Backward Compatibility (v0.2 -> v0.3)

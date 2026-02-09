@@ -25,6 +25,7 @@
 
 #include <cels-widgets/widgets.h>
 #include <cels-widgets/layouts.h>
+#include <cels-widgets/input.h>
 #include <cels-widgets/theme.h>
 #include <cels-widgets/style.h>
 #include <cels-clay/clay_layout.h>
@@ -1094,5 +1095,28 @@ void w_list_item_layout(struct ecs_world_t* world, cels_entity_t self) {
         CLAY_TEXT(CEL_Clay_Text(d->label, (int)strlen(d->label)),
             CLAY_TEXT_CONFIG({ .textColor = v.fg,
                               .userData = w_pack_text_attr(v.text_attr) }));
+    }
+}
+
+/* ============================================================================
+ * Navigation Group Layout
+ * ============================================================================ */
+
+void w_navigation_group_layout(struct ecs_world_t* world, cels_entity_t self) {
+    const W_NavigationScope* scope = (const W_NavigationScope*)ecs_get_id(
+        world, self, W_NavigationScope_ensure());
+    int direction = scope ? scope->direction : 0;
+
+    CEL_Clay(
+        .layout = {
+            .layoutDirection = direction == 0
+                ? CLAY_TOP_TO_BOTTOM : CLAY_LEFT_TO_RIGHT,
+            .sizing = {
+                .width = CLAY_SIZING_GROW(0),
+                .height = CLAY_SIZING_GROW(0)
+            }
+        }
+    ) {
+        CEL_Clay_Children();
     }
 }
