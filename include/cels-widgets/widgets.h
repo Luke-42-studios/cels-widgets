@@ -263,6 +263,52 @@ CEL_Define(W_InteractState, {
 });
 
 /* ============================================================================
+ * Behavioral Components
+ * ============================================================================
+ *
+ * Behavioral components represent reusable interaction patterns that any
+ * widget can opt into. Built-in systems (Plan 03) enforce invariants like
+ * range clamping and scroll bounds automatically.
+ *
+ * Use CEL_UseInstead(OldName, NewName, ...) to swap a default behavioral
+ * component for a custom one -- built-in systems skip entities that don't
+ * have the default component.
+ */
+
+/* Selectable: marks a widget as part of a selection group.
+ * Built-in systems will manage selection state within NavigationScopes. */
+CEL_Define(W_Selectable, {
+    bool selected;          /* True if currently selected in its group */
+});
+
+/* RangeValueF: bounded float range for sliders, progress bars, etc.
+ * Built-in RangeClampF system enforces min <= value <= max each frame. */
+CEL_Define(W_RangeValueF, {
+    float value;            /* Current value */
+    float min;              /* Minimum bound */
+    float max;              /* Maximum bound */
+    float step;             /* Increment step (0 = continuous) */
+});
+
+/* RangeValueI: bounded integer range for step counters, page selectors, etc.
+ * Forward-looking infrastructure -- no built-in widget attaches this in Phase 13.
+ * Built-in RangeClampI system enforces min <= value <= max each frame. */
+CEL_Define(W_RangeValueI, {
+    int value;              /* Current value */
+    int min;                /* Minimum bound */
+    int max;                /* Maximum bound */
+    int step;               /* Increment step (0 = 1) */
+});
+
+/* Scrollable: scroll state for list views, text areas, etc.
+ * Built-in ScrollClamp system enforces scroll_offset bounds each frame. */
+CEL_Define(W_Scrollable, {
+    int scroll_offset;      /* First visible item/line index */
+    int total_count;        /* Total number of items/lines */
+    int visible_count;      /* Number of visible items/lines */
+});
+
+/* ============================================================================
  * Module API
  * ============================================================================ */
 

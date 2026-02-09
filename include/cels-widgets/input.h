@@ -40,6 +40,20 @@ CEL_State(W_FocusState, {
 });
 
 /* ============================================================================
+ * Navigation Scope
+ * ============================================================================ */
+
+/* NavigationScope: navigation group scope state for automatic focus/selection
+ * management. A NavigationScope entity owns a group of child widgets and
+ * drives selection cycling via input. Direction: 0=vertical, 1=horizontal. */
+CEL_Define(W_NavigationScope, {
+    bool wrap;              /* Wrap around at boundaries */
+    int direction;          /* 0 = vertical, 1 = horizontal */
+    int selected_index;     /* Currently selected child index */
+    int child_count;        /* Total children in scope */
+});
+
+/* ============================================================================
  * Focus System Registration
  * ============================================================================ */
 
@@ -48,6 +62,13 @@ CEL_State(W_FocusState, {
  * Can also be called manually during CEL_Build for explicit control.
  */
 extern void widgets_focus_system_register(void);
+
+/*
+ * Register behavioral systems (RangeClamp, ScrollClamp, NavigationScope).
+ * Called by Widgets_init() after behavioral components are registered.
+ * Forward declaration -- implementation in Plan 03.
+ */
+extern void widgets_behavioral_systems_register(void);
 
 #ifdef __cplusplus
 }

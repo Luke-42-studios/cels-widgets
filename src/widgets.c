@@ -43,6 +43,13 @@ CEL_Module(Widgets) {
     W_Focusable_ensure();
     W_InteractState_ensure();
 
+    /* Behavioral components */
+    W_Selectable_ensure();
+    W_RangeValueF_ensure();
+    W_RangeValueI_ensure();
+    W_Scrollable_ensure();
+    W_NavigationScope_ensure();
+
     /* Register focus system */
     widgets_focus_system_register();
 }
