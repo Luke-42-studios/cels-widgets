@@ -93,38 +93,33 @@ CEL_Define(W_TextArea, {
  * Interactive Components
  * ============================================================================ */
 
-/* Button: selectable button with label and selection state */
+/* Button: selectable button with label (selection via W_Selectable component) */
 CEL_Define(W_Button, {
     const char* label;      /* Button text */
-    bool selected;          /* True if currently highlighted */
-    bool focused;           /* True if has keyboard focus */
     void (*on_press)(void); /* Callback when activated (Enter/Space) */
     const Widget_ButtonStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
-/* Slider: labeled value slider with min/max */
+/* Slider: labeled value slider with min/max (selection via W_Selectable component) */
 CEL_Define(W_Slider, {
     const char* label;      /* Slider label text */
     float value;            /* Current value (0.0 - 1.0) */
     float min;              /* Minimum value (default 0) */
     float max;              /* Maximum value (default 1) */
-    bool selected;          /* True if currently highlighted */
     const Widget_SliderStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
-/* Toggle: labeled ON/OFF toggle */
+/* Toggle: labeled ON/OFF toggle (selection via W_Selectable component) */
 CEL_Define(W_Toggle, {
     const char* label;      /* Toggle label text */
     bool value;             /* Current on/off state */
-    bool selected;          /* True if currently highlighted */
     const Widget_ToggleStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
-/* Cycle: labeled cycle-through-options control */
+/* Cycle: labeled cycle-through-options control (selection via W_Selectable component) */
 CEL_Define(W_Cycle, {
     const char* label;      /* Cycle label text */
     const char* value;      /* Current displayed value string */
-    bool selected;          /* True if currently highlighted */
     const Widget_CycleStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
@@ -177,10 +172,9 @@ CEL_Define(W_Table, {
  * Radio Components
  * ============================================================================ */
 
-/* Radio button: individual radio option in a group */
+/* Radio button: individual radio option in a group (selection via W_Selectable component) */
 CEL_Define(W_RadioButton, {
     const char* label;      /* Radio button label */
-    bool selected;          /* True if this option is selected */
     int group_id;           /* Group identifier (links related radios) */
     const Widget_RadioButtonStyle* style; /* Visual overrides (NULL = defaults) */
 });
@@ -232,10 +226,9 @@ CEL_Define(W_ListView, {
     const Widget_ListViewStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
-/* List item: individual item in a list view */
+/* List item: individual item in a list view (selection via W_Selectable component) */
 CEL_Define(W_ListItem, {
     const char* label;      /* Item label text */
-    bool selected;          /* True if currently selected */
     void* data;             /* User data pointer */
     const Widget_ListItemStyle* style; /* Visual overrides (NULL = defaults) */
 });
