@@ -1,17 +1,17 @@
 /*
- * CELS Widgets - TUI Theme System
+ * CELS Widgets - Theme System
  *
  * Provides a shared color theme for all widget layout functions.
  * Colors are CEL_Color {r, g, b, a} from cels-layout. The ncurses
  * renderer maps these to terminal colors via approximate RGB matching.
  *
  * Usage:
- *   const TUI_Theme* theme = tui_get_theme();
+ *   const Widget_Theme* theme = Widget_get_theme();
  *   // Use theme->button_bg, theme->text_primary, etc. in layouts
  *
  *   // Optionally set a custom theme:
- *   static const TUI_Theme my_theme = { ... };
- *   tui_set_theme(&my_theme);
+ *   static const Widget_Theme my_theme = { ... };
+ *   Widget_set_theme(&my_theme);
  */
 
 #ifndef CELS_WIDGETS_THEME_H
@@ -20,9 +20,9 @@
 #include <cels-layout/types.h>
 
 /* ============================================================================
- * TUI_Theme - Color palette for widget rendering
+ * Widget_Theme - Color palette for widget rendering
  * ============================================================================ */
-typedef struct TUI_Theme {
+typedef struct Widget_Theme {
     /* Background colors */
     CEL_Color bg;                  /* Default widget background */
     CEL_Color panel_bg;            /* Panel interior background */
@@ -52,12 +52,12 @@ typedef struct TUI_Theme {
     CEL_Color tab_active_bg;       /* Active tab background */
     CEL_Color status_bar_bg;       /* Status bar background */
     CEL_Color badge_bg;            /* Default badge background */
-} TUI_Theme;
+} Widget_Theme;
 
 /* ============================================================================
  * Default Theme - Dark terminal-friendly palette
  * ============================================================================ */
-static const TUI_Theme TUI_THEME_DEFAULT = {
+static const Widget_Theme Widget_THEME_DEFAULT = {
     .bg                 = {  30,  33,  45, 255 },
     .panel_bg           = {  25,  28,  38, 255 },
     .panel_border       = {  70,  75, 100, 255 },
@@ -88,9 +88,17 @@ static const TUI_Theme TUI_THEME_DEFAULT = {
  * ============================================================================ */
 
 /* Get current active theme (never returns NULL) */
-extern const TUI_Theme* tui_get_theme(void);
+extern const Widget_Theme* Widget_get_theme(void);
 
 /* Set active theme. Pass NULL to restore default. */
-extern void tui_set_theme(const TUI_Theme* theme);
+extern void Widget_set_theme(const Widget_Theme* theme);
+
+/* ============================================================================
+ * Backward Compatibility (v0.2 -> v0.3)
+ * ============================================================================ */
+typedef Widget_Theme TUI_Theme;
+#define TUI_THEME_DEFAULT Widget_THEME_DEFAULT
+#define tui_get_theme Widget_get_theme
+#define tui_set_theme Widget_set_theme
 
 #endif /* CELS_WIDGETS_THEME_H */
