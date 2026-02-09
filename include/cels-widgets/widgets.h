@@ -49,11 +49,13 @@ extern "C" {
 CEL_Define(W_Text, {
     const char* text;       /* Text content */
     int align;              /* 0 = left, 1 = center, 2 = right */
+    const Widget_TextStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Hint: dim hint text line */
 CEL_Define(W_Hint, {
     const char* text;       /* Hint text content */
+    const Widget_HintStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Canvas: header box with centered title */
@@ -68,12 +70,14 @@ CEL_Define(W_InfoBox, {
     const char* title;      /* Box title */
     const char* content;    /* Content text */
     bool border;            /* Draw border (default true) */
+    const Widget_InfoBoxStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Badge: styled tag/label with color */
 CEL_Define(W_Badge, {
     const char* text;       /* Badge text */
     unsigned char r, g, b;  /* Badge color (0-255) */
+    const Widget_BadgeStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* TextArea: multi-line scrollable text */
@@ -82,6 +86,7 @@ CEL_Define(W_TextArea, {
     int max_width;          /* Max width (0 = grow) */
     int max_height;         /* Max height (0 = grow) */
     bool scrollable;        /* Enable scroll container */
+    const Widget_TextAreaStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* ============================================================================
@@ -104,6 +109,7 @@ CEL_Define(W_Slider, {
     float min;              /* Minimum value (default 0) */
     float max;              /* Maximum value (default 1) */
     bool selected;          /* True if currently highlighted */
+    const Widget_SliderStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Toggle: labeled ON/OFF toggle */
@@ -111,6 +117,7 @@ CEL_Define(W_Toggle, {
     const char* label;      /* Toggle label text */
     bool value;             /* Current on/off state */
     bool selected;          /* True if currently highlighted */
+    const Widget_ToggleStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Cycle: labeled cycle-through-options control */
@@ -118,6 +125,7 @@ CEL_Define(W_Cycle, {
     const char* label;      /* Cycle label text */
     const char* value;      /* Current displayed value string */
     bool selected;          /* True if currently highlighted */
+    const Widget_CycleStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* ============================================================================
@@ -129,6 +137,7 @@ CEL_Define(W_ProgressBar, {
     const char* label;      /* Progress label text */
     float value;            /* Progress value (0.0 - 1.0) */
     bool color_by_value;    /* Color changes based on value (red->yellow->green) */
+    const Widget_ProgressBarStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Metric: label + value display for dashboards */
@@ -136,6 +145,7 @@ CEL_Define(W_Metric, {
     const char* label;      /* Metric label */
     const char* value;      /* Formatted value string */
     int status;             /* 0=normal, 1=success, 2=warning, 3=error */
+    const Widget_MetricStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* ============================================================================
@@ -152,6 +162,7 @@ CEL_Define(W_Panel, {
 /* Divider: horizontal or vertical separator */
 CEL_Define(W_Divider, {
     bool vertical;          /* true = vertical, false = horizontal */
+    const Widget_DividerStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Table: key-value table display */
@@ -159,6 +170,7 @@ CEL_Define(W_Table, {
     int row_count;          /* Number of rows */
     const char** keys;      /* Array of key strings */
     const char** values;    /* Array of value strings */
+    const Widget_TableStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* ============================================================================
@@ -170,6 +182,7 @@ CEL_Define(W_RadioButton, {
     const char* label;      /* Radio button label */
     bool selected;          /* True if this option is selected */
     int group_id;           /* Group identifier (links related radios) */
+    const Widget_RadioButtonStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Radio group: container for radio button state */
@@ -177,6 +190,7 @@ CEL_Define(W_RadioGroup, {
     int group_id;           /* Group identifier */
     int selected_index;     /* Currently selected option index */
     int count;              /* Total number of options */
+    const Widget_RadioGroupStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* ============================================================================
@@ -188,18 +202,21 @@ CEL_Define(W_TabBar, {
     int active;             /* Index of the currently active tab */
     int count;              /* Total number of tabs */
     const char** labels;    /* Array of tab label strings (count elements) */
+    const Widget_TabBarStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Tab content: placeholder content area for a tab */
 CEL_Define(W_TabContent, {
     const char* text;       /* Main placeholder text (centered) */
     const char* hint;       /* Secondary hint text (centered, below main) */
+    const Widget_TabContentStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Status bar: bottom status line with left and right sections */
 CEL_Define(W_StatusBar, {
     const char* left;       /* Left-aligned text */
     const char* right;      /* Right-aligned text */
+    const Widget_StatusBarStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* ============================================================================
@@ -212,6 +229,7 @@ CEL_Define(W_ListView, {
     int selected_index;     /* Currently selected item index */
     int scroll_offset;      /* First visible item index */
     int visible_count;      /* Number of visible items (0 = auto) */
+    const Widget_ListViewStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* List item: individual item in a list view */
@@ -219,6 +237,7 @@ CEL_Define(W_ListItem, {
     const char* label;      /* Item label text */
     bool selected;          /* True if currently selected */
     void* data;             /* User data pointer */
+    const Widget_ListItemStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* ============================================================================
@@ -228,6 +247,19 @@ CEL_Define(W_ListItem, {
 /* Focusable: tag component marking a widget as keyboard-focusable */
 CEL_Define(W_Focusable, {
     int tab_order;          /* Tab navigation order (0 = auto) */
+});
+
+/* ============================================================================
+ * Interaction State
+ * ============================================================================ */
+
+/* Interaction state: unified visual state for all interactive widgets.
+ * w_resolve_visual() reads these flags to determine theme-based colors.
+ * Composition macros set these from props (Plan 12-03). */
+CEL_Define(W_InteractState, {
+    bool focused;       /* Has keyboard focus */
+    bool selected;      /* Currently selected/highlighted */
+    bool disabled;      /* Interaction disabled */
 });
 
 /* ============================================================================
