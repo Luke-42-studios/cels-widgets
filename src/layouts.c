@@ -494,14 +494,15 @@ void w_toggle_layout(struct ecs_world_t* world, cels_entity_t self) {
         CEL_BORDER_NONE,
         selected, false, disabled);
 
-    const char* state_str = d->value ? "ON" : "OFF";
-    /* State indicator: style overrides or theme status colors */
-    CEL_Color state_color;
-    if (d->value) {
-        state_color = (s && s->on_color.a > 0) ? s->on_color : t->status_success.color;
-    } else {
-        state_color = (s && s->off_color.a > 0) ? s->off_color : t->status_error.color;
-    }
+    /* ON/OFF colors from style or theme */
+    CEL_Color on_color = (s && s->on_color.a > 0) ? s->on_color : t->status_success.color;
+    CEL_Color off_color = (s && s->off_color.a > 0) ? s->off_color : t->status_error.color;
+
+    /* Active value highlighted, inactive muted. Reverse when selected. */
+    CEL_Color on_fg  = d->value ? on_color : t->content_muted.color;
+    CEL_Color off_fg = d->value ? t->content_muted.color : off_color;
+    CEL_TextAttr on_attr  = { .reverse = (selected && d->value) };
+    CEL_TextAttr off_attr = { .reverse = (selected && !d->value) };
 
     CEL_Clay(
         .layout = {
@@ -509,8 +510,7 @@ void w_toggle_layout(struct ecs_world_t* world, cels_entity_t self) {
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) },
             .padding = { .left = 1, .right = 1 },
             .childGap = 1
-        },
-        .backgroundColor = v.bg
+        }
     ) {
         char label_buf[32];
         int label_len = snprintf(label_buf, sizeof(label_buf), "%-12s", d->label);
@@ -518,11 +518,12 @@ void w_toggle_layout(struct ecs_world_t* world, cels_entity_t self) {
             CLAY_TEXT_CONFIG({ .textColor = v.fg,
                               .userData = w_pack_text_attr(v.text_attr) }));
 
-        char toggle_buf[16];
-        int toggle_len = snprintf(toggle_buf, sizeof(toggle_buf), "[%s]", state_str);
-        CLAY_TEXT(CEL_Clay_Text(toggle_buf, toggle_len),
-            CLAY_TEXT_CONFIG({ .textColor = state_color,
-                              .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+        CLAY_TEXT(CLAY_STRING("[ON]"),
+            CLAY_TEXT_CONFIG({ .textColor = on_fg,
+                              .userData = w_pack_text_attr(on_attr) }));
+        CLAY_TEXT(CLAY_STRING("[OFF]"),
+            CLAY_TEXT_CONFIG({ .textColor = off_fg,
+                              .userData = w_pack_text_attr(off_attr) }));
     }
 }
 
@@ -550,6 +551,8 @@ void w_cycle_layout(struct ecs_world_t* world, cels_entity_t self) {
 
     /* Arrow color: selected = border_focused, normal = content_muted */
     CEL_Color arrow_color = selected ? t->border_focused.color : t->content_muted.color;
+    /* Reverse arrows when selected to highlight the interactive controls */
+    CEL_TextAttr arrow_attr = { .reverse = selected };
 
     CEL_Clay(
         .layout = {
@@ -557,8 +560,7 @@ void w_cycle_layout(struct ecs_world_t* world, cels_entity_t self) {
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) },
             .padding = { .left = 1, .right = 1 },
             .childGap = 1
-        },
-        .backgroundColor = v.bg
+        }
     ) {
         char label_buf[32];
         int label_len = snprintf(label_buf, sizeof(label_buf), "%-12s", d->label);
@@ -568,7 +570,7 @@ void w_cycle_layout(struct ecs_world_t* world, cels_entity_t self) {
 
         CLAY_TEXT(CLAY_STRING("[<]"),
             CLAY_TEXT_CONFIG({ .textColor = arrow_color,
-                              .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+                              .userData = w_pack_text_attr(arrow_attr) }));
 
         const char* val = d->value ? d->value : "";
         char val_buf[24];
@@ -579,7 +581,7 @@ void w_cycle_layout(struct ecs_world_t* world, cels_entity_t self) {
 
         CLAY_TEXT(CLAY_STRING("[>]"),
             CLAY_TEXT_CONFIG({ .textColor = arrow_color,
-                              .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+                              .userData = w_pack_text_attr(arrow_attr) }));
     }
 }
 
