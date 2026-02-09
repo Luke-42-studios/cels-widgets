@@ -38,6 +38,7 @@
  * ============================================================================ */
 
 static const Widget_Theme* s_active_theme = NULL;
+static bool s_theme_dirty = false;
 
 const Widget_Theme* Widget_get_theme(void) {
     return s_active_theme ? s_active_theme : &Widget_THEME_DEFAULT;
@@ -45,6 +46,13 @@ const Widget_Theme* Widget_get_theme(void) {
 
 void Widget_set_theme(const Widget_Theme* theme) {
     s_active_theme = theme;
+    s_theme_dirty = true;
+}
+
+bool Widget_theme_changed(void) {
+    bool dirty = s_theme_dirty;
+    s_theme_dirty = false;
+    return dirty;
 }
 
 /* ============================================================================

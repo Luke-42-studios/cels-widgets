@@ -76,30 +76,6 @@ typedef struct Widget_Theme {
     CEL_Visual danger;              /* Destructive actions */
     CEL_Visual accent;              /* Secondary accent */
     CEL_Visual muted;               /* De-emphasized elements */
-
-    /* -----------------------------------------------------------------------
-     * Backward Compatibility: old CEL_Color field names
-     *
-     * These map to the color component of the semantic tokens above.
-     * Used by layouts.c until Plan 12-03 migrates to w_resolve_visual().
-     * DEPRECATED -- will be removed after Plan 12-03 migration.
-     * ----------------------------------------------------------------------- */
-    CEL_Color bg;                  /* = surface.color */
-    CEL_Color panel_bg;            /* = surface_raised.color */
-    CEL_Color panel_border;        /* = border.color */
-    CEL_Color fg;                  /* = content.color */
-    CEL_Color secondary;           /* = content_muted.color */
-    CEL_Color button_bg;           /* = interactive.color */
-    CEL_Color button_fg;           /* = content.color */
-    CEL_Color button_selected_bg;  /* = interactive_active.color */
-    CEL_Color focus_border;        /* = primary.color */
-    CEL_Color success;             /* = status_success.color */
-    CEL_Color warning;             /* = status_warning.color */
-    CEL_Color error;               /* = status_error.color */
-    CEL_Color progress_empty;      /* = progress_track.color */
-    CEL_Color tab_active_bg;       /* = interactive_active.color */
-    CEL_Color status_bar_bg;       /* = surface_alt.color */
-    CEL_Color badge_bg;            /* = accent.color */
 } Widget_Theme;
 
 /* ============================================================================
@@ -155,24 +131,6 @@ static const Widget_Theme WIDGET_THEME_DARK = {
     .danger = _W_V(220,  80,  80),
     .accent = _W_V( 60,  70, 110),
     .muted  = _W_V( 50,  55,  70),
-
-    /* Backward compat (DEPRECATED) */
-    .bg                 = {  30,  33,  45, 255 },
-    .panel_bg           = {  25,  28,  38, 255 },
-    .panel_border       = {  70,  75, 100, 255 },
-    .fg                 = { 200, 205, 220, 255 },
-    .secondary          = { 120, 130, 160, 255 },
-    .button_bg          = {  40,  44,  60, 255 },
-    .button_fg          = { 200, 205, 220, 255 },
-    .button_selected_bg = {  60,  70, 110, 255 },
-    .focus_border       = {  80, 100, 180, 255 },
-    .success            = {  80, 200, 100, 255 },
-    .warning            = { 220, 180,  60, 255 },
-    .error              = { 220,  80,  80, 255 },
-    .progress_empty     = {  50,  55,  70, 255 },
-    .tab_active_bg      = {  50,  55,  80, 255 },
-    .status_bar_bg      = {  20,  22,  35, 255 },
-    .badge_bg           = {  60,  70, 110, 255 },
 };
 
 /* ============================================================================
@@ -218,24 +176,6 @@ static const Widget_Theme WIDGET_THEME_LIGHT = {
     .danger = _W_V(211,  47,  47),
     .accent = _W_V(156,  39, 176),
     .muted  = _W_V(158, 158, 158),
-
-    /* Backward compat (DEPRECATED) */
-    .bg                 = { 245, 245, 245, 255 },
-    .panel_bg           = { 255, 255, 255, 255 },
-    .panel_border       = { 189, 189, 189, 255 },
-    .fg                 = {  33,  33,  33, 255 },
-    .secondary          = { 117, 117, 117, 255 },
-    .button_bg          = { 224, 224, 224, 255 },
-    .button_fg          = {  33,  33,  33, 255 },
-    .button_selected_bg = { 187, 222, 251, 255 },
-    .focus_border       = {  25, 118, 210, 255 },
-    .success            = {  46, 125,  50, 255 },
-    .warning            = { 245, 124,   0, 255 },
-    .error              = { 211,  47,  47, 255 },
-    .progress_empty     = { 224, 224, 224, 255 },
-    .tab_active_bg      = { 187, 222, 251, 255 },
-    .status_bar_bg      = { 228, 228, 228, 255 },
-    .badge_bg           = { 156,  39, 176, 255 },
 };
 
 /* ============================================================================
@@ -286,24 +226,6 @@ static const Widget_Theme WIDGET_THEME_DRACULA = {
     .danger = _W_V(255,  85,  85),             /* #ff5555 */
     .accent = _W_V(255, 121, 198),             /* #ff79c6 Pink */
     .muted  = _W_V( 55,  57,  72),
-
-    /* Backward compat (DEPRECATED) */
-    .bg                 = {  40,  42,  54, 255 },
-    .panel_bg           = {  68,  71,  90, 255 },
-    .panel_border       = {  98, 114, 164, 255 },
-    .fg                 = { 248, 248, 242, 255 },
-    .secondary          = {  98, 114, 164, 255 },
-    .button_bg          = {  68,  71,  90, 255 },
-    .button_fg          = { 248, 248, 242, 255 },
-    .button_selected_bg = {  98, 114, 164, 255 },
-    .focus_border       = { 189, 147, 249, 255 },
-    .success            = {  80, 250, 123, 255 },
-    .warning            = { 241, 250, 140, 255 },
-    .error              = { 255,  85,  85, 255 },
-    .progress_empty     = {  55,  57,  72, 255 },
-    .tab_active_bg      = {  98, 114, 164, 255 },
-    .status_bar_bg      = {  33,  34,  44, 255 },
-    .badge_bg           = { 255, 121, 198, 255 },
 };
 
 /* ============================================================================
@@ -354,24 +276,6 @@ static const Widget_Theme WIDGET_THEME_GRUVBOX = {
     .danger = _W_V(251,  73,  52),             /* #fb4934 */
     .accent = _W_V(211, 134, 155),             /* #d3869b Purple */
     .muted  = _W_V( 80,  73,  69),            /* #504945 */
-
-    /* Backward compat (DEPRECATED) */
-    .bg                 = {  40,  40,  40, 255 },
-    .panel_bg           = {  60,  56,  54, 255 },
-    .panel_border       = { 102,  92,  84, 255 },
-    .fg                 = { 235, 219, 178, 255 },
-    .secondary          = { 168, 153, 132, 255 },
-    .button_bg          = {  60,  56,  54, 255 },
-    .button_fg          = { 235, 219, 178, 255 },
-    .button_selected_bg = {  80,  73,  69, 255 },
-    .focus_border       = { 250, 189,  47, 255 },
-    .success            = { 184, 187,  38, 255 },
-    .warning            = { 254, 128,  25, 255 },
-    .error              = { 251,  73,  52, 255 },
-    .progress_empty     = {  50,  48,  47, 255 },
-    .tab_active_bg      = {  80,  73,  69, 255 },
-    .status_bar_bg      = {  29,  32,  33, 255 },
-    .badge_bg           = { 211, 134, 155, 255 },
 };
 
 /* ============================================================================
@@ -422,24 +326,6 @@ static const Widget_Theme WIDGET_THEME_NORD = {
     .danger = _W_V(191,  97, 106),             /* #BF616A */
     .accent = _W_V(180, 142, 173),             /* #B48EAD */
     .muted  = _W_V( 67,  76,  94),            /* #434C5E */
-
-    /* Backward compat (DEPRECATED) */
-    .bg                 = {  46,  52,  64, 255 },
-    .panel_bg           = {  67,  76,  94, 255 },
-    .panel_border       = {  76,  86, 106, 255 },
-    .fg                 = { 216, 222, 233, 255 },
-    .secondary          = { 127, 140, 162, 255 },
-    .button_bg          = {  67,  76,  94, 255 },
-    .button_fg          = { 216, 222, 233, 255 },
-    .button_selected_bg = {  76,  86, 106, 255 },
-    .focus_border       = { 136, 192, 208, 255 },
-    .success            = { 163, 190, 140, 255 },
-    .warning            = { 235, 203, 139, 255 },
-    .error              = { 191,  97, 106, 255 },
-    .progress_empty     = {  55,  62,  78, 255 },
-    .tab_active_bg      = {  76,  86, 106, 255 },
-    .status_bar_bg      = {  59,  66,  82, 255 },
-    .badge_bg           = { 180, 142, 173, 255 },
 };
 
 /* ============================================================================
@@ -455,8 +341,15 @@ static const Widget_Theme WIDGET_THEME_NORD = {
 /* Get current active theme (never returns NULL) */
 extern const Widget_Theme* Widget_get_theme(void);
 
-/* Set active theme. Pass NULL to restore default. */
+/* Set active theme. Pass NULL to restore default.
+ * Marks theme dirty -- compositions will pick up the new theme
+ * on their next recomposition cycle. */
 extern void Widget_set_theme(const Widget_Theme* theme);
+
+/* Returns true once after Widget_set_theme() was called.
+ * Resets the dirty flag after reading. Use in main loops or
+ * root compositions to detect theme changes if needed. */
+extern bool Widget_theme_changed(void);
 
 /* ============================================================================
  * Backward Compatibility (v0.2 -> v0.3)
