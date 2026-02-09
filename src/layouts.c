@@ -8,17 +8,25 @@
  * All rendering is handled by the generic Clay renderer (e.g.,
  * clay_ncurses_renderer). No per-widget renderer code is needed.
  *
+ * Visual resolution:
+ *   - Interactive widgets use w_resolve_visual() for state-to-color mapping
+ *   - Display widgets read semantic theme tokens directly
+ *   - All CLAY_TEXT calls include .userData = w_pack_text_attr() for
+ *     text attribute propagation to the renderer
+ *
  * Patterns:
  *   - CEL_Clay(...) { } for element containers
  *   - CLAY_TEXT(str, config) for text
  *   - CEL_Clay_Text(buf, len) for dynamic strings
  *   - CEL_Clay_Children() for child entity insertion
  *   - Widget_get_theme() for consistent theming
+ *   - w_resolve_visual() for interactive widget state resolution
  */
 
 #include <cels-widgets/widgets.h>
 #include <cels-widgets/layouts.h>
 #include <cels-widgets/theme.h>
+#include <cels-widgets/style.h>
 #include <cels-clay/clay_layout.h>
 #include <clay.h>
 #include <flecs.h>
@@ -40,26 +48,35 @@ void Widget_set_theme(const Widget_Theme* theme) {
 }
 
 /* ============================================================================
- * Helper: status color from theme
+ * Helper: status color from theme (semantic tokens)
  * ============================================================================ */
 
-static Clay_Color status_color(const Widget_Theme* t, int status) {
+static CEL_Color status_color(const Widget_Theme* t, int status) {
     switch (status) {
-        case 1: return t->success;
-        case 2: return t->warning;
-        case 3: return t->error;
-        default: return t->fg;
+        case 1: return t->status_success.color;
+        case 2: return t->status_warning.color;
+        case 3: return t->status_error.color;
+        default: return t->content.color;
     }
 }
 
 /* ============================================================================
  * Text & Display Layouts
+ *
+ * Display widgets use direct theme token access (no w_resolve_visual)
+ * since they have no interactive state. Style overrides use alpha sentinel.
  * ============================================================================ */
 
 void w_text_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_Text* d = (const W_Text*)ecs_get_id(world, self, W_Text_ensure());
     if (!d || !d->text) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_TextStyle* s = d->style;
+
+    CEL_Color text_fg = (s && s->fg.a > 0) ? s->fg : t->content.color;
+    CEL_TextAttr text_attr = (s && (s->text_attr.bold || s->text_attr.dim
+        || s->text_attr.underline || s->text_attr.reverse || s->text_attr.italic))
+        ? s->text_attr : t->content.attr;
 
     Clay_ChildAlignment align = {0};
     if (d->align == 1) align.x = CLAY_ALIGN_X_CENTER;
@@ -72,7 +89,8 @@ void w_text_layout(struct ecs_world_t* world, cels_entity_t self) {
         }
     ) {
         CLAY_TEXT(CEL_Clay_Text(d->text, (int)strlen(d->text)),
-            CLAY_TEXT_CONFIG({ .textColor = t->fg }));
+            CLAY_TEXT_CONFIG({ .textColor = text_fg,
+                              .userData = w_pack_text_attr(text_attr) }));
     }
 }
 
@@ -80,6 +98,12 @@ void w_hint_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_Hint* d = (const W_Hint*)ecs_get_id(world, self, W_Hint_ensure());
     if (!d || !d->text) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_HintStyle* s = d->style;
+
+    CEL_Color text_fg = (s && s->fg.a > 0) ? s->fg : t->content_muted.color;
+    CEL_TextAttr text_attr = (s && (s->text_attr.bold || s->text_attr.dim
+        || s->text_attr.underline || s->text_attr.reverse || s->text_attr.italic))
+        ? s->text_attr : t->content_muted.attr;
 
     CEL_Clay(
         .layout = {
@@ -88,7 +112,8 @@ void w_hint_layout(struct ecs_world_t* world, cels_entity_t self) {
         }
     ) {
         CLAY_TEXT(CEL_Clay_Text(d->text, (int)strlen(d->text)),
-            CLAY_TEXT_CONFIG({ .textColor = t->secondary }));
+            CLAY_TEXT_CONFIG({ .textColor = text_fg,
+                              .userData = w_pack_text_attr(text_attr) }));
     }
 }
 
@@ -113,8 +138,10 @@ void w_canvas_layout(struct ecs_world_t* world, cels_entity_t self) {
         ? Widget_resolve_sizing(s->height, CLAY_SIZING_FIXED(3))
         : CLAY_SIZING_FIXED(3);
 
-    Clay_Color bg = s ? Widget_resolve_color(s->bg, t->panel_bg) : t->panel_bg;
-    Clay_Color border_color = s ? Widget_resolve_color(s->border_color, t->panel_border) : t->panel_border;
+    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
+    CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border.color;
+    CEL_Color title_fg = t->primary.color;
+    CEL_TextAttr title_attr = t->primary.attr;
 
     CEL_Clay(
         .layout = {
@@ -122,15 +149,16 @@ void w_canvas_layout(struct ecs_world_t* world, cels_entity_t self) {
             .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
         },
         .border = {
-            .color = border_color,
+            .color = bdr_color,
             .width = CLAY_BORDER_OUTSIDE(1)
         },
-        .backgroundColor = bg,
+        .backgroundColor = bg_color,
         .cornerRadius = { .topLeft = 1, .topRight = 1 }
     ) {
         if (d->title) {
             CLAY_TEXT(CEL_Clay_Text(d->title, (int)strlen(d->title)),
-                CLAY_TEXT_CONFIG({ .textColor = t->focus_border }));
+                CLAY_TEXT_CONFIG({ .textColor = title_fg,
+                                  .userData = w_pack_text_attr(title_attr) }));
         }
     }
 }
@@ -139,6 +167,16 @@ void w_info_box_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_InfoBox* d = (const W_InfoBox*)ecs_get_id(world, self, W_InfoBox_ensure());
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_InfoBoxStyle* s = d->style;
+
+    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
+    CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border.color;
+    CEL_Color title_fg = t->primary.color;
+    CEL_TextAttr title_attr = t->primary.attr;
+    CEL_Color content_fg = (s && s->fg.a > 0) ? s->fg : t->content.color;
+    CEL_TextAttr content_attr = (s && (s->text_attr.bold || s->text_attr.dim
+        || s->text_attr.underline || s->text_attr.reverse || s->text_attr.italic))
+        ? s->text_attr : t->content.attr;
 
     if (d->border) {
         CEL_Clay(
@@ -149,19 +187,21 @@ void w_info_box_layout(struct ecs_world_t* world, cels_entity_t self) {
                 .childGap = 1
             },
             .border = {
-                .color = t->panel_border,
+                .color = bdr_color,
                 .width = CLAY_BORDER_OUTSIDE(1)
             },
-            .backgroundColor = t->panel_bg,
+            .backgroundColor = bg_color,
             .cornerRadius = { .topLeft = 1, .topRight = 1 }
         ) {
             if (d->title) {
                 CLAY_TEXT(CEL_Clay_Text(d->title, (int)strlen(d->title)),
-                    CLAY_TEXT_CONFIG({ .textColor = t->focus_border }));
+                    CLAY_TEXT_CONFIG({ .textColor = title_fg,
+                                      .userData = w_pack_text_attr(title_attr) }));
             }
             if (d->content) {
                 CLAY_TEXT(CEL_Clay_Text(d->content, (int)strlen(d->content)),
-                    CLAY_TEXT_CONFIG({ .textColor = t->fg }));
+                    CLAY_TEXT_CONFIG({ .textColor = content_fg,
+                                      .userData = w_pack_text_attr(content_attr) }));
             }
         }
     } else {
@@ -174,11 +214,13 @@ void w_info_box_layout(struct ecs_world_t* world, cels_entity_t self) {
         ) {
             if (d->title) {
                 CLAY_TEXT(CEL_Clay_Text(d->title, (int)strlen(d->title)),
-                    CLAY_TEXT_CONFIG({ .textColor = t->focus_border }));
+                    CLAY_TEXT_CONFIG({ .textColor = title_fg,
+                                      .userData = w_pack_text_attr(title_attr) }));
             }
             if (d->content) {
                 CLAY_TEXT(CEL_Clay_Text(d->content, (int)strlen(d->content)),
-                    CLAY_TEXT_CONFIG({ .textColor = t->fg }));
+                    CLAY_TEXT_CONFIG({ .textColor = content_fg,
+                                      .userData = w_pack_text_attr(content_attr) }));
             }
         }
     }
@@ -188,20 +230,33 @@ void w_badge_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_Badge* d = (const W_Badge*)ecs_get_id(world, self, W_Badge_ensure());
     if (!d || !d->text) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_BadgeStyle* s = d->style;
 
-    Clay_Color badge_color = (d->r || d->g || d->b)
-        ? (Clay_Color){ d->r, d->g, d->b, 255 }
-        : t->badge_bg;
+    /* Badge bg: style badge_color > props r/g/b > theme accent */
+    CEL_Color badge_bg;
+    if (s && s->badge_color.a > 0) {
+        badge_bg = s->badge_color;
+    } else if (d->r || d->g || d->b) {
+        badge_bg = (CEL_Color){ d->r, d->g, d->b, 255 };
+    } else {
+        badge_bg = t->accent.color;
+    }
+
+    CEL_Color text_fg = (s && s->fg.a > 0) ? s->fg : t->primary_content.color;
+    CEL_TextAttr text_attr = (s && (s->text_attr.bold || s->text_attr.dim
+        || s->text_attr.underline || s->text_attr.reverse || s->text_attr.italic))
+        ? s->text_attr : (CEL_TextAttr){0};
 
     CEL_Clay(
         .layout = {
             .sizing = { .height = CLAY_SIZING_FIXED(1) },
             .padding = { .left = 1, .right = 1 }
         },
-        .backgroundColor = badge_color
+        .backgroundColor = badge_bg
     ) {
         CLAY_TEXT(CEL_Clay_Text(d->text, (int)strlen(d->text)),
-            CLAY_TEXT_CONFIG({ .textColor = t->fg }));
+            CLAY_TEXT_CONFIG({ .textColor = text_fg,
+                              .userData = w_pack_text_attr(text_attr) }));
     }
 }
 
@@ -209,6 +264,12 @@ void w_text_area_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_TextArea* d = (const W_TextArea*)ecs_get_id(world, self, W_TextArea_ensure());
     if (!d || !d->text) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_TextAreaStyle* s = d->style;
+
+    CEL_Color text_fg = (s && s->fg.a > 0) ? s->fg : t->content.color;
+    CEL_TextAttr text_attr = (s && (s->text_attr.bold || s->text_attr.dim
+        || s->text_attr.underline || s->text_attr.reverse || s->text_attr.italic))
+        ? s->text_attr : t->content.attr;
 
     Clay_SizingAxis w_sizing = (d->max_width > 0)
         ? CLAY_SIZING_FIXED((float)d->max_width)
@@ -230,7 +291,8 @@ void w_text_area_layout(struct ecs_world_t* world, cels_entity_t self) {
             }
         ) {
             CLAY_TEXT(CEL_Clay_Text(d->text, (int)strlen(d->text)),
-                CLAY_TEXT_CONFIG({ .textColor = t->fg }));
+                CLAY_TEXT_CONFIG({ .textColor = text_fg,
+                                  .userData = w_pack_text_attr(text_attr) }));
         }
     } else {
         CEL_Clay(
@@ -241,13 +303,17 @@ void w_text_area_layout(struct ecs_world_t* world, cels_entity_t self) {
             }
         ) {
             CLAY_TEXT(CEL_Clay_Text(d->text, (int)strlen(d->text)),
-                CLAY_TEXT_CONFIG({ .textColor = t->fg }));
+                CLAY_TEXT_CONFIG({ .textColor = text_fg,
+                                  .userData = w_pack_text_attr(text_attr) }));
         }
     }
 }
 
 /* ============================================================================
  * Interactive Layouts
+ *
+ * Interactive widgets use w_resolve_visual() for centralized state-to-visual
+ * mapping. Priority: disabled > selected > focused > normal.
  * ============================================================================ */
 
 void w_button_layout(struct ecs_world_t* world, cels_entity_t self) {
@@ -256,8 +322,26 @@ void w_button_layout(struct ecs_world_t* world, cels_entity_t self) {
     const Widget_Theme* t = Widget_get_theme();
     const Widget_ButtonStyle* s = d->style;
 
-    /* Sizing: style override or defaults (GROW x FIXED(1))
-     * Width uses Widget_resolve_width (divides by AR so CEL_FIXED(30) = 30 terminal cols) */
+    /* Read W_InteractState if available (set by composition macro) */
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    bool disabled = ist ? ist->disabled : false;
+
+    W_ResolvedVisual v = w_resolve_visual(t,
+        s ? s->bg : CEL_COLOR_NONE,
+        s ? s->fg : CEL_COLOR_NONE,
+        s ? s->text_attr : (CEL_TextAttr){0},
+        s ? s->border_color : CEL_COLOR_NONE,
+        s ? s->border : CEL_BORDER_DEFAULT,
+        CEL_BORDER_ON_SELECT,
+        d->selected, d->focused, disabled);
+
+    /* Selected-state specific overrides */
+    CEL_Color final_bg = v.bg;
+    CEL_Color final_fg = v.fg;
+    if (d->selected && s && s->bg_selected.a > 0) final_bg = s->bg_selected;
+    if (d->selected && s && s->fg_selected.a > 0) final_fg = s->fg_selected;
+
+    /* Sizing: style override or defaults (GROW x FIXED(1)) */
     Clay_SizingAxis w_axis = s
         ? Widget_resolve_width(s->width, CLAY_SIZING_GROW(0))
         : CLAY_SIZING_GROW(0);
@@ -279,54 +363,26 @@ void w_button_layout(struct ecs_world_t* world, cels_entity_t self) {
         else if (s->align == 3) align.x = CLAY_ALIGN_X_RIGHT;
     }
 
-    /* Colors: style override or theme defaults */
-    Clay_Color bg_normal   = s ? Widget_resolve_color(s->bg, t->button_bg) : t->button_bg;
-    Clay_Color bg_selected = s ? Widget_resolve_color(s->bg_selected, t->button_selected_bg) : t->button_selected_bg;
-    Clay_Color fg_normal   = s ? Widget_resolve_color(s->fg, t->button_fg) : t->button_fg;
-    Clay_Color fg_selected = s ? Widget_resolve_color(s->fg_selected, t->focus_border) : t->focus_border;
-
-    Clay_Color bg = d->selected ? bg_selected : bg_normal;
-    Clay_Color text_color = d->selected ? fg_selected : fg_normal;
-
-    /* Border: style override or default (on select) */
-    Clay_Color border_color = s ? Widget_resolve_color(s->border_color, t->focus_border) : t->focus_border;
-    Clay_BorderWidth border_w = {0};
-    CEL_BorderMode border_mode = s ? s->border : CEL_BORDER_DEFAULT;
-    switch (border_mode) {
-        case CEL_BORDER_ALWAYS:
-            border_w = (Clay_BorderWidth){1, 1, 1, 1, 0};
-            break;
-        case CEL_BORDER_ON_SELECT:
-            if (d->selected) border_w = (Clay_BorderWidth){1, 1, 1, 1, 0};
-            break;
-        case CEL_BORDER_ON_FOCUS:
-            if (d->focused) border_w = (Clay_BorderWidth){1, 1, 1, 1, 0};
-            break;
-        case CEL_BORDER_NONE:
-            break;
-        default: /* CEL_BORDER_DEFAULT -- border on select */
-            if (d->selected) border_w = (Clay_BorderWidth){1, 1, 1, 1, 0};
-            break;
-    }
-
     CEL_Clay(
         .layout = {
             .sizing = { .width = w_axis, .height = h_axis },
             .padding = pad,
             .childAlignment = align
         },
-        .backgroundColor = bg,
+        .backgroundColor = final_bg,
         .border = {
-            .color = border_color,
-            .width = border_w
+            .color = v.border_color,
+            .width = { v.show_border?1:0, v.show_border?1:0, v.show_border?1:0, v.show_border?1:0, 0 }
         }
     ) {
         if (d->selected) {
             CLAY_TEXT(CLAY_STRING("> "),
-                CLAY_TEXT_CONFIG({ .textColor = text_color }));
+                CLAY_TEXT_CONFIG({ .textColor = final_fg,
+                                  .userData = w_pack_text_attr(v.text_attr) }));
         }
         CLAY_TEXT(CEL_Clay_Text(d->label, (int)strlen(d->label)),
-            CLAY_TEXT_CONFIG({ .textColor = text_color }));
+            CLAY_TEXT_CONFIG({ .textColor = final_fg,
+                              .userData = w_pack_text_attr(v.text_attr) }));
     }
 }
 
@@ -334,9 +390,22 @@ void w_slider_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_Slider* d = (const W_Slider*)ecs_get_id(world, self, W_Slider_ensure());
     if (!d || !d->label) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_SliderStyle* s = d->style;
 
-    Clay_Color bg = d->selected ? t->button_selected_bg : t->button_bg;
-    Clay_Color label_color = d->selected ? t->warning : t->fg;
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    bool disabled = ist ? ist->disabled : false;
+
+    W_ResolvedVisual v = w_resolve_visual(t,
+        s ? s->bg : CEL_COLOR_NONE,
+        s ? s->fg : CEL_COLOR_NONE,
+        s ? s->text_attr : (CEL_TextAttr){0},
+        s ? s->border_color : CEL_COLOR_NONE,
+        s ? s->border : CEL_BORDER_DEFAULT,
+        CEL_BORDER_NONE,
+        d->selected, false, disabled);
+
+    /* Bar fill color: style override or theme primary */
+    CEL_Color bar_color = (s && s->fill_color.a > 0) ? s->fill_color : t->primary.color;
 
     float range = (d->max > d->min) ? (d->max - d->min) : 1.0f;
     float norm = (d->value - d->min) / range;
@@ -360,17 +429,19 @@ void w_slider_layout(struct ecs_world_t* world, cels_entity_t self) {
             .padding = { .left = 1, .right = 1 },
             .childGap = 1
         },
-        .backgroundColor = bg
+        .backgroundColor = v.bg
     ) {
         /* Label */
         char label_buf[32];
         int label_len = snprintf(label_buf, sizeof(label_buf), "%-12s", d->label);
         CLAY_TEXT(CEL_Clay_Text(label_buf, label_len),
-            CLAY_TEXT_CONFIG({ .textColor = label_color }));
+            CLAY_TEXT_CONFIG({ .textColor = v.fg,
+                              .userData = w_pack_text_attr(v.text_attr) }));
 
         /* Bar */
         CLAY_TEXT(CEL_Clay_Text(bar_buf, (int)strlen(bar_buf)),
-            CLAY_TEXT_CONFIG({ .textColor = t->focus_border }));
+            CLAY_TEXT_CONFIG({ .textColor = bar_color,
+                              .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
     }
 }
 
@@ -378,12 +449,28 @@ void w_toggle_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_Toggle* d = (const W_Toggle*)ecs_get_id(world, self, W_Toggle_ensure());
     if (!d || !d->label) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_ToggleStyle* s = d->style;
 
-    Clay_Color bg = d->selected ? t->button_selected_bg : t->button_bg;
-    Clay_Color label_color = d->selected ? t->warning : t->fg;
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    bool disabled = ist ? ist->disabled : false;
+
+    W_ResolvedVisual v = w_resolve_visual(t,
+        s ? s->bg : CEL_COLOR_NONE,
+        s ? s->fg : CEL_COLOR_NONE,
+        s ? s->text_attr : (CEL_TextAttr){0},
+        s ? s->border_color : CEL_COLOR_NONE,
+        s ? s->border : CEL_BORDER_DEFAULT,
+        CEL_BORDER_NONE,
+        d->selected, false, disabled);
 
     const char* state_str = d->value ? "ON" : "OFF";
-    Clay_Color state_color = d->value ? t->success : t->error;
+    /* State indicator: style overrides or theme status colors */
+    CEL_Color state_color;
+    if (d->value) {
+        state_color = (s && s->on_color.a > 0) ? s->on_color : t->status_success.color;
+    } else {
+        state_color = (s && s->off_color.a > 0) ? s->off_color : t->status_error.color;
+    }
 
     CEL_Clay(
         .layout = {
@@ -392,17 +479,19 @@ void w_toggle_layout(struct ecs_world_t* world, cels_entity_t self) {
             .padding = { .left = 1, .right = 1 },
             .childGap = 1
         },
-        .backgroundColor = bg
+        .backgroundColor = v.bg
     ) {
         char label_buf[32];
         int label_len = snprintf(label_buf, sizeof(label_buf), "%-12s", d->label);
         CLAY_TEXT(CEL_Clay_Text(label_buf, label_len),
-            CLAY_TEXT_CONFIG({ .textColor = label_color }));
+            CLAY_TEXT_CONFIG({ .textColor = v.fg,
+                              .userData = w_pack_text_attr(v.text_attr) }));
 
         char toggle_buf[16];
         int toggle_len = snprintf(toggle_buf, sizeof(toggle_buf), "[%s]", state_str);
         CLAY_TEXT(CEL_Clay_Text(toggle_buf, toggle_len),
-            CLAY_TEXT_CONFIG({ .textColor = state_color }));
+            CLAY_TEXT_CONFIG({ .textColor = state_color,
+                              .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
     }
 }
 
@@ -410,10 +499,22 @@ void w_cycle_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_Cycle* d = (const W_Cycle*)ecs_get_id(world, self, W_Cycle_ensure());
     if (!d || !d->label) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_CycleStyle* s = d->style;
 
-    Clay_Color bg = d->selected ? t->button_selected_bg : t->button_bg;
-    Clay_Color label_color = d->selected ? t->warning : t->fg;
-    Clay_Color arrow_color = d->selected ? t->focus_border : t->secondary;
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    bool disabled = ist ? ist->disabled : false;
+
+    W_ResolvedVisual v = w_resolve_visual(t,
+        s ? s->bg : CEL_COLOR_NONE,
+        s ? s->fg : CEL_COLOR_NONE,
+        s ? s->text_attr : (CEL_TextAttr){0},
+        s ? s->border_color : CEL_COLOR_NONE,
+        s ? s->border : CEL_BORDER_DEFAULT,
+        CEL_BORDER_NONE,
+        d->selected, false, disabled);
+
+    /* Arrow color: selected = border_focused, normal = content_muted */
+    CEL_Color arrow_color = d->selected ? t->border_focused.color : t->content_muted.color;
 
     CEL_Clay(
         .layout = {
@@ -422,24 +523,28 @@ void w_cycle_layout(struct ecs_world_t* world, cels_entity_t self) {
             .padding = { .left = 1, .right = 1 },
             .childGap = 1
         },
-        .backgroundColor = bg
+        .backgroundColor = v.bg
     ) {
         char label_buf[32];
         int label_len = snprintf(label_buf, sizeof(label_buf), "%-12s", d->label);
         CLAY_TEXT(CEL_Clay_Text(label_buf, label_len),
-            CLAY_TEXT_CONFIG({ .textColor = label_color }));
+            CLAY_TEXT_CONFIG({ .textColor = v.fg,
+                              .userData = w_pack_text_attr(v.text_attr) }));
 
         CLAY_TEXT(CLAY_STRING("[<]"),
-            CLAY_TEXT_CONFIG({ .textColor = arrow_color }));
+            CLAY_TEXT_CONFIG({ .textColor = arrow_color,
+                              .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
 
         const char* val = d->value ? d->value : "";
         char val_buf[24];
         int val_len = snprintf(val_buf, sizeof(val_buf), "%-15s", val);
         CLAY_TEXT(CEL_Clay_Text(val_buf, val_len),
-            CLAY_TEXT_CONFIG({ .textColor = t->fg }));
+            CLAY_TEXT_CONFIG({ .textColor = t->content.color,
+                              .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
 
         CLAY_TEXT(CLAY_STRING("[>]"),
-            CLAY_TEXT_CONFIG({ .textColor = arrow_color }));
+            CLAY_TEXT_CONFIG({ .textColor = arrow_color,
+                              .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
     }
 }
 
@@ -451,20 +556,27 @@ void w_progress_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_ProgressBar* d = (const W_ProgressBar*)ecs_get_id(world, self, W_ProgressBar_ensure());
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_ProgressBarStyle* s = d->style;
 
-    float v = d->value;
-    if (v < 0.0f) v = 0.0f;
-    if (v > 1.0f) v = 1.0f;
+    float val = d->value;
+    if (val < 0.0f) val = 0.0f;
+    if (val > 1.0f) val = 1.0f;
 
-    Clay_Color fill_color = t->progress_fill.color;
+    CEL_Color fill_color = (s && s->fill_color.a > 0) ? s->fill_color : t->progress_fill.color;
     if (d->color_by_value) {
-        if (v < 0.33f)      fill_color = t->error;
-        else if (v < 0.66f) fill_color = t->warning;
-        else                 fill_color = t->success;
+        if (val < 0.33f)      fill_color = t->status_error.color;
+        else if (val < 0.66f) fill_color = t->status_warning.color;
+        else                  fill_color = t->status_success.color;
     }
 
+    CEL_Color label_fg = (s && s->fg.a > 0) ? s->fg : t->content.color;
+    CEL_TextAttr label_attr = (s && (s->text_attr.bold || s->text_attr.dim
+        || s->text_attr.underline || s->text_attr.reverse || s->text_attr.italic))
+        ? s->text_attr : t->content.attr;
+    CEL_Color pct_fg = t->content_muted.color;
+
     int bar_width = 20;
-    int filled = (int)(v * bar_width);
+    int filled = (int)(val * bar_width);
     char bar_buf[32];
     bar_buf[0] = '[';
     for (int j = 0; j < bar_width; j++) {
@@ -474,7 +586,7 @@ void w_progress_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
     bar_buf[bar_width + 2] = '\0';
 
     char pct_buf[8];
-    int pct_len = snprintf(pct_buf, sizeof(pct_buf), "%3d%%", (int)(v * 100));
+    int pct_len = snprintf(pct_buf, sizeof(pct_buf), "%3d%%", (int)(val * 100));
 
     CEL_Clay(
         .layout = {
@@ -487,12 +599,15 @@ void w_progress_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
             char label_buf[32];
             int label_len = snprintf(label_buf, sizeof(label_buf), "%-12s", d->label);
             CLAY_TEXT(CEL_Clay_Text(label_buf, label_len),
-                CLAY_TEXT_CONFIG({ .textColor = t->fg }));
+                CLAY_TEXT_CONFIG({ .textColor = label_fg,
+                                  .userData = w_pack_text_attr(label_attr) }));
         }
         CLAY_TEXT(CEL_Clay_Text(bar_buf, (int)strlen(bar_buf)),
-            CLAY_TEXT_CONFIG({ .textColor = fill_color }));
+            CLAY_TEXT_CONFIG({ .textColor = fill_color,
+                              .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
         CLAY_TEXT(CEL_Clay_Text(pct_buf, pct_len),
-            CLAY_TEXT_CONFIG({ .textColor = t->secondary }));
+            CLAY_TEXT_CONFIG({ .textColor = pct_fg,
+                              .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
     }
 }
 
@@ -500,8 +615,13 @@ void w_metric_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_Metric* d = (const W_Metric*)ecs_get_id(world, self, W_Metric_ensure());
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_MetricStyle* s = d->style;
 
-    Clay_Color val_color = status_color(t, d->status);
+    CEL_Color val_color = status_color(t, d->status);
+    CEL_Color label_fg = (s && s->fg.a > 0) ? s->fg : t->content_muted.color;
+    CEL_TextAttr label_attr = (s && (s->text_attr.bold || s->text_attr.dim
+        || s->text_attr.underline || s->text_attr.reverse || s->text_attr.italic))
+        ? s->text_attr : t->content_muted.attr;
 
     CEL_Clay(
         .layout = {
@@ -514,11 +634,13 @@ void w_metric_layout(struct ecs_world_t* world, cels_entity_t self) {
             char label_buf[32];
             int label_len = snprintf(label_buf, sizeof(label_buf), "%-16s", d->label);
             CLAY_TEXT(CEL_Clay_Text(label_buf, label_len),
-                CLAY_TEXT_CONFIG({ .textColor = t->secondary }));
+                CLAY_TEXT_CONFIG({ .textColor = label_fg,
+                                  .userData = w_pack_text_attr(label_attr) }));
         }
         if (d->value) {
             CLAY_TEXT(CEL_Clay_Text(d->value, (int)strlen(d->value)),
-                CLAY_TEXT_CONFIG({ .textColor = val_color }));
+                CLAY_TEXT_CONFIG({ .textColor = val_color,
+                                  .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
         }
     }
 }
@@ -549,8 +671,10 @@ void w_panel_layout(struct ecs_world_t* world, cels_entity_t self) {
     }
 
     /* Colors: style override or theme */
-    Clay_Color bg = s ? Widget_resolve_color(s->bg, t->panel_bg) : t->panel_bg;
-    Clay_Color border_color = s ? Widget_resolve_color(s->border_color, t->panel_border) : t->panel_border;
+    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
+    CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border.color;
+    CEL_Color title_fg = t->primary.color;
+    CEL_TextAttr title_attr = t->primary.attr;
 
     /* Border: style override or always-on */
     Clay_BorderWidth border_w = CLAY_BORDER_OUTSIDE(1);
@@ -567,16 +691,17 @@ void w_panel_layout(struct ecs_world_t* world, cels_entity_t self) {
             .padding = pad,
             .childGap = 1
         },
-        .backgroundColor = bg,
+        .backgroundColor = bg_color,
         .border = {
-            .color = border_color,
+            .color = bdr_color,
             .width = border_w
         },
         .cornerRadius = { .topLeft = 1, .topRight = 1 }
     ) {
         if (d && d->title) {
             CLAY_TEXT(CEL_Clay_Text(d->title, (int)strlen(d->title)),
-                CLAY_TEXT_CONFIG({ .textColor = t->focus_border }));
+                CLAY_TEXT_CONFIG({ .textColor = title_fg,
+                                  .userData = w_pack_text_attr(title_attr) }));
         }
         CEL_Clay_Children();
     }
@@ -585,7 +710,9 @@ void w_panel_layout(struct ecs_world_t* world, cels_entity_t self) {
 void w_divider_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_Divider* d = (const W_Divider*)ecs_get_id(world, self, W_Divider_ensure());
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_DividerStyle* s = (d ? d->style : NULL);
 
+    CEL_Color div_color = (s && s->bg.a > 0) ? s->bg : t->divider.color;
     bool vertical = d ? d->vertical : false;
 
     if (vertical) {
@@ -593,14 +720,14 @@ void w_divider_layout(struct ecs_world_t* world, cels_entity_t self) {
             .layout = {
                 .sizing = { .width = CLAY_SIZING_FIXED(1), .height = CLAY_SIZING_GROW(0) }
             },
-            .backgroundColor = t->divider.color
+            .backgroundColor = div_color
         ) {}
     } else {
         CEL_Clay(
             .layout = {
                 .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) }
             },
-            .backgroundColor = t->divider.color
+            .backgroundColor = div_color
         ) {}
     }
 }
@@ -609,6 +736,12 @@ void w_table_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_Table* d = (const W_Table*)ecs_get_id(world, self, W_Table_ensure());
     if (!d || d->row_count <= 0) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_TableStyle* s = d->style;
+
+    CEL_Color key_fg = (s && s->fg.a > 0) ? s->fg : t->content_muted.color;
+    CEL_TextAttr key_attr = t->content_muted.attr;
+    CEL_Color val_fg = t->content.color;
+    CEL_TextAttr val_attr = t->content.attr;
 
     CEL_Clay(
         .layout = {
@@ -631,9 +764,11 @@ void w_table_layout(struct ecs_world_t* world, cels_entity_t self) {
                 char key_buf[32];
                 int key_len = snprintf(key_buf, sizeof(key_buf), "%-16s", key);
                 CLAY_TEXT(CEL_Clay_Text(key_buf, key_len),
-                    CLAY_TEXT_CONFIG({ .textColor = t->secondary }));
+                    CLAY_TEXT_CONFIG({ .textColor = key_fg,
+                                      .userData = w_pack_text_attr(key_attr) }));
                 CLAY_TEXT(CEL_Clay_Text(val, (int)strlen(val)),
-                    CLAY_TEXT_CONFIG({ .textColor = t->fg }));
+                    CLAY_TEXT_CONFIG({ .textColor = val_fg,
+                                      .userData = w_pack_text_attr(val_attr) }));
             }
         }
     }
@@ -647,9 +782,24 @@ void w_radio_button_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_RadioButton* d = (const W_RadioButton*)ecs_get_id(world, self, W_RadioButton_ensure());
     if (!d || !d->label) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_RadioButtonStyle* s = d->style;
+
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    bool disabled = ist ? ist->disabled : false;
+
+    W_ResolvedVisual v = w_resolve_visual(t,
+        s ? s->bg : CEL_COLOR_NONE,
+        s ? s->fg : CEL_COLOR_NONE,
+        s ? s->text_attr : (CEL_TextAttr){0},
+        s ? s->border_color : CEL_COLOR_NONE,
+        s ? s->border : CEL_BORDER_DEFAULT,
+        CEL_BORDER_NONE,
+        d->selected, false, disabled);
 
     const char* marker = d->selected ? "(*)" : "( )";
-    Clay_Color text_color = d->selected ? t->warning : t->secondary;
+    /* Use resolved fg for selected, content_muted for unselected */
+    CEL_Color text_color = d->selected ? v.fg : t->content_muted.color;
+    CEL_TextAttr text_attr = v.text_attr;
 
     char buf[64];
     int len = snprintf(buf, sizeof(buf), "%s %s", marker, d->label);
@@ -661,7 +811,8 @@ void w_radio_button_layout(struct ecs_world_t* world, cels_entity_t self) {
         }
     ) {
         CLAY_TEXT(CEL_Clay_Text(buf, len),
-            CLAY_TEXT_CONFIG({ .textColor = text_color }));
+            CLAY_TEXT_CONFIG({ .textColor = text_color,
+                              .userData = w_pack_text_attr(text_attr) }));
     }
 }
 
@@ -669,6 +820,10 @@ void w_radio_group_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_RadioGroup* d = (const W_RadioGroup*)ecs_get_id(world, self, W_RadioGroup_ensure());
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_RadioGroupStyle* s = d->style;
+
+    CEL_Color header_fg = (s && s->fg.a > 0) ? s->fg : t->primary.color;
+    CEL_TextAttr header_attr = t->primary.attr;
 
     char buf[64];
     int len = snprintf(buf, sizeof(buf), "Radio Group %d (%d/%d)",
@@ -682,7 +837,8 @@ void w_radio_group_layout(struct ecs_world_t* world, cels_entity_t self) {
         }
     ) {
         CLAY_TEXT(CEL_Clay_Text(buf, len),
-            CLAY_TEXT_CONFIG({ .textColor = t->focus_border }));
+            CLAY_TEXT_CONFIG({ .textColor = header_fg,
+                              .userData = w_pack_text_attr(header_attr) }));
         CEL_Clay_Children();
     }
 }
@@ -695,6 +851,14 @@ void w_tab_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_TabBar* d = (const W_TabBar*)ecs_get_id(world, self, W_TabBar_ensure());
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_TabBarStyle* s = d->style;
+
+    CEL_Color bar_bg = (s && s->bg.a > 0) ? s->bg : t->surface_alt.color;
+    CEL_Color active_fg = t->primary.color;
+    CEL_TextAttr active_attr = t->primary.attr;
+    CEL_Color inactive_fg = t->content_muted.color;
+    CEL_Color active_tab_bg = (s && s->active_bg.a > 0) ? s->active_bg : t->surface_raised.color;
+    CEL_Color active_border = t->primary.color;
 
     CEL_Clay(
         .layout = {
@@ -703,12 +867,12 @@ void w_tab_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
             .childGap = 0,
             .childAlignment = { .y = CLAY_ALIGN_Y_BOTTOM }
         },
-        .backgroundColor = t->status_bar_bg
+        .backgroundColor = bar_bg
     ) {
         for (int i = 0; i < d->count; i++) {
             const char* name = (d->labels && d->labels[i]) ? d->labels[i] : "?";
             bool active = (i == d->active);
-            Clay_Color tab_fg = active ? t->focus_border : t->secondary;
+            CEL_Color tab_fg = active ? active_fg : inactive_fg;
 
             char tab_buf[32];
             int tab_len = snprintf(tab_buf, sizeof(tab_buf), " %d:%s ", i + 1, name);
@@ -721,15 +885,16 @@ void w_tab_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
                         .padding = { .left = 1, .right = 1 },
                         .childAlignment = { .y = CLAY_ALIGN_Y_CENTER }
                     },
-                    .backgroundColor = t->tab_active_bg,
+                    .backgroundColor = active_tab_bg,
                     .border = {
-                        .color = t->focus_border,
+                        .color = active_border,
                         .width = { .top = 1, .left = 1, .right = 1 }
                     },
                     .cornerRadius = { .topLeft = 1, .topRight = 1 }
                 ) {
                     CLAY_TEXT(CEL_Clay_Text(tab_buf, tab_len),
-                        CLAY_TEXT_CONFIG({ .textColor = tab_fg }));
+                        CLAY_TEXT_CONFIG({ .textColor = tab_fg,
+                                          .userData = w_pack_text_attr(active_attr) }));
                 }
             } else {
                 /* Inactive tabs: 1 row, aligned to bottom */
@@ -738,10 +903,11 @@ void w_tab_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
                         .sizing = { .height = CLAY_SIZING_FIXED(1) },
                         .padding = { .left = 1, .right = 1 }
                     },
-                    .backgroundColor = t->status_bar_bg
+                    .backgroundColor = bar_bg
                 ) {
                     CLAY_TEXT(CEL_Clay_Text(tab_buf, tab_len),
-                        CLAY_TEXT_CONFIG({ .textColor = tab_fg }));
+                        CLAY_TEXT_CONFIG({ .textColor = tab_fg,
+                                          .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
                 }
             }
         }
@@ -752,6 +918,10 @@ void w_tab_content_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_TabContent* d = (const W_TabContent*)ecs_get_id(world, self, W_TabContent_ensure());
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_TabContentStyle* s = d->style;
+
+    CEL_Color text_fg = (s && s->fg.a > 0) ? s->fg : t->content_muted.color;
+    CEL_TextAttr text_attr = t->content_muted.attr;
 
     CEL_Clay(
         .layout = {
@@ -766,11 +936,13 @@ void w_tab_content_layout(struct ecs_world_t* world, cels_entity_t self) {
     ) {
         if (d->text) {
             CLAY_TEXT(CEL_Clay_Text(d->text, (int)strlen(d->text)),
-                CLAY_TEXT_CONFIG({ .textColor = t->secondary }));
+                CLAY_TEXT_CONFIG({ .textColor = text_fg,
+                                  .userData = w_pack_text_attr(text_attr) }));
         }
         if (d->hint) {
             CLAY_TEXT(CEL_Clay_Text(d->hint, (int)strlen(d->hint)),
-                CLAY_TEXT_CONFIG({ .textColor = t->secondary }));
+                CLAY_TEXT_CONFIG({ .textColor = text_fg,
+                                  .userData = w_pack_text_attr(text_attr) }));
         }
         CEL_Clay_Children();
     }
@@ -780,6 +952,13 @@ void w_status_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_StatusBar* d = (const W_StatusBar*)ecs_get_id(world, self, W_StatusBar_ensure());
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_StatusBarStyle* s = d->style;
+
+    CEL_Color bar_bg = (s && s->bg.a > 0) ? s->bg : t->surface_alt.color;
+    CEL_Color left_fg = (s && s->fg.a > 0) ? s->fg : t->content.color;
+    CEL_Color right_fg = t->content_muted.color;
+    CEL_TextAttr left_attr = t->content.attr;
+    CEL_TextAttr right_attr = t->content_muted.attr;
 
     CEL_Clay(
         .layout = {
@@ -788,11 +967,12 @@ void w_status_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
             .padding = { .left = 1, .right = 1 },
             .childAlignment = { .y = CLAY_ALIGN_Y_CENTER }
         },
-        .backgroundColor = t->status_bar_bg
+        .backgroundColor = bar_bg
     ) {
         if (d->left) {
             CLAY_TEXT(CEL_Clay_Text(d->left, (int)strlen(d->left)),
-                CLAY_TEXT_CONFIG({ .textColor = t->fg }));
+                CLAY_TEXT_CONFIG({ .textColor = left_fg,
+                                  .userData = w_pack_text_attr(left_attr) }));
         }
         /* Spacer pushes right text to far end */
         CEL_Clay(
@@ -800,7 +980,8 @@ void w_status_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
         ) {}
         if (d->right) {
             CLAY_TEXT(CEL_Clay_Text(d->right, (int)strlen(d->right)),
-                CLAY_TEXT_CONFIG({ .textColor = t->secondary }));
+                CLAY_TEXT_CONFIG({ .textColor = right_fg,
+                                  .userData = w_pack_text_attr(right_attr) }));
         }
     }
 }
@@ -813,6 +994,9 @@ void w_list_view_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_ListView* d = (const W_ListView*)ecs_get_id(world, self, W_ListView_ensure());
     (void)d;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_ListViewStyle* s = (d ? d->style : NULL);
+
+    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface.color;
 
     CEL_Clay(
         .layout = {
@@ -826,7 +1010,7 @@ void w_list_view_layout(struct ecs_world_t* world, cels_entity_t self) {
             .vertical = true,
             .childOffset = Clay_GetScrollOffset()
         },
-        .backgroundColor = t->bg
+        .backgroundColor = bg_color
     ) {
         CEL_Clay_Children();
     }
@@ -836,22 +1020,34 @@ void w_list_item_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_ListItem* d = (const W_ListItem*)ecs_get_id(world, self, W_ListItem_ensure());
     if (!d || !d->label) return;
     const Widget_Theme* t = Widget_get_theme();
+    const Widget_ListItemStyle* s = d->style;
 
-    Clay_Color bg = d->selected ? t->button_selected_bg : t->bg;
-    Clay_Color text_color = d->selected ? t->warning : t->fg;
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    bool disabled = ist ? ist->disabled : false;
+
+    W_ResolvedVisual v = w_resolve_visual(t,
+        s ? s->bg : CEL_COLOR_NONE,
+        s ? s->fg : CEL_COLOR_NONE,
+        s ? s->text_attr : (CEL_TextAttr){0},
+        s ? s->border_color : CEL_COLOR_NONE,
+        s ? s->border : CEL_BORDER_DEFAULT,
+        CEL_BORDER_NONE,
+        d->selected, false, disabled);
 
     CEL_Clay(
         .layout = {
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) },
             .padding = { .left = 2 }
         },
-        .backgroundColor = bg
+        .backgroundColor = v.bg
     ) {
         if (d->selected) {
             CLAY_TEXT(CLAY_STRING("> "),
-                CLAY_TEXT_CONFIG({ .textColor = text_color }));
+                CLAY_TEXT_CONFIG({ .textColor = v.fg,
+                                  .userData = w_pack_text_attr(v.text_attr) }));
         }
         CLAY_TEXT(CEL_Clay_Text(d->label, (int)strlen(d->label)),
-            CLAY_TEXT_CONFIG({ .textColor = text_color }));
+            CLAY_TEXT_CONFIG({ .textColor = v.fg,
+                              .userData = w_pack_text_attr(v.text_attr) }));
     }
 }
