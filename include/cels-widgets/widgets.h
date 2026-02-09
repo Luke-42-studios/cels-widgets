@@ -80,7 +80,8 @@ CEL_Define(W_Badge, {
     const Widget_BadgeStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
-/* TextArea: multi-line scrollable text */
+/* TextArea: multi-line scrollable text
+ * Note: W_Scrollable component attached for scroll state */
 CEL_Define(W_TextArea, {
     const char* text;       /* Multi-line text content */
     int max_width;          /* Max width (0 = grow) */
@@ -100,12 +101,9 @@ CEL_Define(W_Button, {
     const Widget_ButtonStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
-/* Slider: labeled value slider with min/max (selection via W_Selectable component) */
+/* Slider: labeled value slider (range via W_RangeValueF component) */
 CEL_Define(W_Slider, {
     const char* label;      /* Slider label text */
-    float value;            /* Current value (0.0 - 1.0) */
-    float min;              /* Minimum value (default 0) */
-    float max;              /* Maximum value (default 1) */
     const Widget_SliderStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
@@ -127,10 +125,9 @@ CEL_Define(W_Cycle, {
  * Progress & Metric Components
  * ============================================================================ */
 
-/* ProgressBar: horizontal progress indicator */
+/* ProgressBar: horizontal progress indicator (value via W_RangeValueF component) */
 CEL_Define(W_ProgressBar, {
     const char* label;      /* Progress label text */
-    float value;            /* Progress value (0.0 - 1.0) */
     bool color_by_value;    /* Color changes based on value (red->yellow->green) */
     const Widget_ProgressBarStyle* style; /* Visual overrides (NULL = defaults) */
 });
@@ -217,12 +214,10 @@ CEL_Define(W_StatusBar, {
  * List Components
  * ============================================================================ */
 
-/* List view: scrollable list container */
+/* List view: scrollable list container (scroll via W_Scrollable component) */
 CEL_Define(W_ListView, {
     int item_count;         /* Total number of items */
     int selected_index;     /* Currently selected item index */
-    int scroll_offset;      /* First visible item index */
-    int visible_count;      /* Number of visible items (0 = auto) */
     const Widget_ListViewStyle* style; /* Visual overrides (NULL = defaults) */
 });
 

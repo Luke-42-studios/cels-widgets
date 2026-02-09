@@ -75,6 +75,8 @@ CEL_Composition(WTextArea, const char* text; int max_width; int max_height; bool
     CEL_Has(W_TextArea, .text = props.text, .max_width = props.max_width,
             .max_height = props.max_height, .scrollable = props.scrollable,
             .style = props.style);
+    /* W_Scrollable: scroll state for content overflow, populated by layout */
+    CEL_Has(W_Scrollable, .scroll_offset = 0, .total_count = 0, .visible_count = 0);
 }
 #define Widget_TextArea(...) CEL_Init(WTextArea, __VA_ARGS__)
 
@@ -99,8 +101,9 @@ CEL_Composition(WButton, const char* label; bool selected; bool focused; bool di
 CEL_Composition(WSlider, const char* label; float value; float min; float max;
                  bool selected; bool disabled; const Widget_SliderStyle* style;) {
     CEL_Has(ClayUI, .layout_fn = w_slider_layout);
-    CEL_Has(W_Slider, .label = props.label, .value = props.value,
-            .min = props.min, .max = props.max, .style = props.style);
+    CEL_Has(W_Slider, .label = props.label, .style = props.style);
+    CEL_Has(W_RangeValueF, .value = props.value, .min = props.min,
+            .max = props.max, .step = 0.1f);
     CEL_Has(W_Selectable, .selected = props.selected);
     CEL_Has(W_InteractState, .selected = props.selected, .disabled = props.disabled);
 }
@@ -131,8 +134,10 @@ CEL_Composition(WCycle, const char* label; const char* value; bool selected; boo
 CEL_Composition(WProgressBar, const char* label; float value; bool color_by_value;
                  const Widget_ProgressBarStyle* style;) {
     CEL_Has(ClayUI, .layout_fn = w_progress_bar_layout);
-    CEL_Has(W_ProgressBar, .label = props.label, .value = props.value,
+    CEL_Has(W_ProgressBar, .label = props.label,
             .color_by_value = props.color_by_value, .style = props.style);
+    CEL_Has(W_RangeValueF, .value = props.value, .min = 0.0f,
+            .max = 1.0f, .step = 0.01f);
 }
 #define Widget_ProgressBar(...) CEL_Init(WProgressBar, __VA_ARGS__)
 
@@ -224,9 +229,10 @@ CEL_Composition(WListView, int item_count; int selected_index; int scroll_offset
                  int visible_count; const Widget_ListViewStyle* style;) {
     CEL_Has(ClayUI, .layout_fn = w_list_view_layout);
     CEL_Has(W_ListView, .item_count = props.item_count,
-            .selected_index = props.selected_index,
-            .scroll_offset = props.scroll_offset,
-            .visible_count = props.visible_count, .style = props.style);
+            .selected_index = props.selected_index, .style = props.style);
+    CEL_Has(W_Scrollable, .scroll_offset = props.scroll_offset,
+            .total_count = props.item_count,
+            .visible_count = props.visible_count);
 }
 #define Widget_ListView(...) CEL_Init(WListView, __VA_ARGS__)
 

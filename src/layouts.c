@@ -274,6 +274,10 @@ void w_text_area_layout(struct ecs_world_t* world, cels_entity_t self) {
     const Widget_Theme* t = Widget_get_theme();
     const Widget_TextAreaStyle* s = d->style;
 
+    /* Read W_Scrollable for scroll state (behavioral component, preparatory) */
+    const W_Scrollable* scr = (const W_Scrollable*)ecs_get_id(world, self, W_Scrollable_ensure());
+    (void)scr; /* Available for future scroll offset control */
+
     CEL_Color text_fg = (s && s->fg.a > 0) ? s->fg : t->content.color;
     CEL_TextAttr text_attr = (s && (s->text_attr.bold || s->text_attr.dim
         || s->text_attr.underline || s->text_attr.reverse || s->text_attr.italic))
@@ -424,10 +428,14 @@ void w_slider_layout(struct ecs_world_t* world, cels_entity_t self) {
     /* Bar fill color: style override or theme primary */
     CEL_Color bar_color = (s && s->fill_color.a > 0) ? s->fill_color : t->primary.color;
 
-    float range = (d->max > d->min) ? (d->max - d->min) : 1.0f;
-    float norm = (d->value - d->min) / range;
-    if (norm < 0.0f) norm = 0.0f;
-    if (norm > 1.0f) norm = 1.0f;
+    /* Read W_RangeValueF for range data (behavioral component) */
+    const W_RangeValueF* rv = (const W_RangeValueF*)ecs_get_id(world, self, W_RangeValueF_ensure());
+    float val = rv ? rv->value : 0.0f;
+    float rmin = rv ? rv->min : 0.0f;
+    float rmax = rv ? rv->max : 1.0f;
+
+    float range = (rmax > rmin) ? (rmax - rmin) : 1.0f;
+    float norm = (val - rmin) / range;
 
     char bar_buf[32];
     int bar_width = 20;
@@ -583,9 +591,9 @@ void w_progress_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
     const Widget_Theme* t = Widget_get_theme();
     const Widget_ProgressBarStyle* s = d->style;
 
-    float val = d->value;
-    if (val < 0.0f) val = 0.0f;
-    if (val > 1.0f) val = 1.0f;
+    /* Read W_RangeValueF for progress value (behavioral component) */
+    const W_RangeValueF* rv = (const W_RangeValueF*)ecs_get_id(world, self, W_RangeValueF_ensure());
+    float val = rv ? rv->value : 0.0f;
 
     CEL_Color fill_color = (s && s->fill_color.a > 0) ? s->fill_color : t->progress_fill.color;
     if (d->color_by_value) {
@@ -1024,6 +1032,10 @@ void w_list_view_layout(struct ecs_world_t* world, cels_entity_t self) {
     (void)d;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_ListViewStyle* s = (d ? d->style : NULL);
+
+    /* Read W_Scrollable for scroll state (behavioral component) */
+    const W_Scrollable* scr = (const W_Scrollable*)ecs_get_id(world, self, W_Scrollable_ensure());
+    (void)scr; /* Available for future scroll offset inspection */
 
     CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface.color;
 
