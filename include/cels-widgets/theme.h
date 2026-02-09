@@ -98,38 +98,38 @@ static const Widget_Theme WIDGET_THEME_DARK = {
     .surface_alt    = _W_V( 20,  22,  35),
     .surface_raised = _W_V( 25,  28,  38),
 
-    /* Primary */
-    .primary         = _W_VB( 80, 100, 180),
+    /* Primary — cyan accent */
+    .primary         = _W_VB(100, 210, 220),
     .primary_content = _W_V(200, 205, 220),
 
     /* Content */
     .content       = _W_V(200, 205, 220),
     .content_muted = _W_V(120, 130, 160),
-    .content_title = _W_VB( 80, 100, 180),
+    .content_title = _W_VB(100, 210, 220),
 
     /* Interactive */
     .interactive          = _W_V( 40,  44,  60),
-    .interactive_active   = _W_V( 60,  70, 110),
+    .interactive_active   = _W_V( 45,  90,  95),
     .interactive_disabled = _W_V( 50,  53,  65),
 
     /* Border */
-    .border         = _W_V( 70,  75, 100),
-    .border_focused = _W_V( 80, 100, 180),
+    .border         = _W_V( 70,  80,  90),
+    .border_focused = _W_V(100, 210, 220),
 
     /* Status */
     .status_success = _W_V( 80, 200, 100),
     .status_warning = _W_V(220, 180,  60),
     .status_error   = _W_V(220,  80,  80),
-    .status_info    = _W_V( 80, 160, 255),
+    .status_info    = _W_V(100, 200, 240),
 
     /* Structural */
     .divider        = _W_V( 60,  65,  85),
-    .progress_fill  = _W_V( 80, 160, 255),
+    .progress_fill  = _W_V(100, 210, 220),
     .progress_track = _W_V( 50,  55,  70),
 
     /* Extended */
     .danger = _W_V(220,  80,  80),
-    .accent = _W_V( 60,  70, 110),
+    .accent = _W_V( 45,  90,  95),
     .muted  = _W_V( 50,  55,  70),
 };
 
