@@ -1114,7 +1114,7 @@ void w_navigation_group_layout(struct ecs_world_t* world, cels_entity_t self) {
                 ? CLAY_TOP_TO_BOTTOM : CLAY_LEFT_TO_RIGHT,
             .sizing = {
                 .width = CLAY_SIZING_GROW(0),
-                .height = CLAY_SIZING_GROW(0)
+                .height = CLAY_SIZING_FIT(0)
             }
         }
     ) {
