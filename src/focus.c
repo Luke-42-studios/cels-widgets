@@ -427,6 +427,224 @@ static void process_scrollable_navigation(ecs_world_t* world, const CELS_Input* 
 }
 
 /* ============================================================================
+ * Modal Overlay Processing (Escape dismiss)
+ * ============================================================================ */
+
+static void process_modal_overlay(ecs_world_t* world, const CELS_Input* input) {
+    W_Modal_ensure();
+
+    /* Edge-detect Escape */
+    bool escape_pressed = (input->has_raw_key && input->raw_key == 27 &&
+                           !(s_prev_input.has_raw_key && s_prev_input.raw_key == 27));
+    if (!escape_pressed) return;
+
+    /* Find visible modal with highest z_index */
+    ecs_query_t* q = ecs_query(world, {
+        .terms = {{ .id = W_ModalID }}
+    });
+    if (!q) return;
+
+    ecs_entity_t top_modal = 0;
+    int top_z = -1;
+
+    ecs_iter_t qit = ecs_query_iter(world, q);
+    while (ecs_query_next(&qit)) {
+        for (int e = 0; e < qit.count; e++) {
+            const W_Modal* m = (const W_Modal*)ecs_get_id(
+                world, qit.entities[e], W_ModalID);
+            if (m && m->visible) {
+                const W_OverlayState* os = (const W_OverlayState*)ecs_get_id(
+                    world, qit.entities[e], W_OverlayState_ensure());
+                int z = os ? os->z_index : 200;
+                if (z > top_z) {
+                    top_z = z;
+                    top_modal = qit.entities[e];
+                }
+            }
+        }
+    }
+    ecs_query_fini(q);
+
+    if (top_modal != 0) {
+        const W_Modal* m = (const W_Modal*)ecs_get_id(world, top_modal, W_ModalID);
+        if (m && m->on_dismiss) {
+            m->on_dismiss();
+        }
+        widgets_nav_scope_pop();
+    }
+}
+
+/* ============================================================================
+ * Window Overlay Processing
+ *
+ * 1. Escape dismiss: fires on_close on topmost visible window
+ * 2. Focus-to-raise: focusing a window raises its z_order
+ * 3. Z-band compaction: prevents z_order overflow beyond band 150-199
+ * ============================================================================ */
+
+static cels_entity_t s_prev_focused_window = 0;
+
+static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) {
+    W_Window_ensure();
+    W_OverlayState_ensure();
+
+    /* --- Escape dismiss (after modals have had their chance) --- */
+    bool escape_pressed = (input->has_raw_key && input->raw_key == 27 &&
+                           !(s_prev_input.has_raw_key && s_prev_input.raw_key == 27));
+
+    /* Check if any modal is visible first -- modals take priority */
+    bool modal_visible = false;
+    {
+        ecs_query_t* mq = ecs_query(world, {
+            .terms = {{ .id = W_ModalID }}
+        });
+        if (mq) {
+            ecs_iter_t mit = ecs_query_iter(world, mq);
+            while (ecs_query_next(&mit)) {
+                for (int e = 0; e < mit.count; e++) {
+                    const W_Modal* m = (const W_Modal*)ecs_get_id(
+                        world, mit.entities[e], W_ModalID);
+                    if (m && m->visible) { modal_visible = true; break; }
+                }
+                if (modal_visible) break;
+            }
+            ecs_query_fini(mq);
+        }
+    }
+
+    /* Query all window entities */
+    ecs_query_t* q = ecs_query(world, {
+        .terms = {{ .id = W_WindowID }}
+    });
+    if (!q) return;
+
+    /* Collect visible windows and find topmost */
+    ecs_entity_t top_window = 0;
+    int top_z = -1;
+    int max_z_order = -1;
+
+    ecs_iter_t qit = ecs_query_iter(world, q);
+    while (ecs_query_next(&qit)) {
+        for (int e = 0; e < qit.count; e++) {
+            const W_Window* w = (const W_Window*)ecs_get_id(
+                world, qit.entities[e], W_WindowID);
+            if (w && w->visible) {
+                if (w->z_order > max_z_order) max_z_order = w->z_order;
+                if (w->z_order > top_z) {
+                    top_z = w->z_order;
+                    top_window = qit.entities[e];
+                }
+            }
+        }
+    }
+    ecs_query_fini(q);
+
+    /* Escape: dismiss topmost visible window (only if no modal is visible) */
+    if (escape_pressed && !modal_visible && top_window != 0) {
+        const W_Window* w = (const W_Window*)ecs_get_id(world, top_window, W_WindowID);
+        if (w && w->on_close) {
+            w->on_close();
+        }
+        widgets_nav_scope_pop();
+    }
+
+    /* --- Focus-to-raise z-order --- */
+    /* Check if focus state changed to a window entity */
+    W_FocusState_ensure();
+
+    /* Re-query windows to find which one has focus */
+    ecs_query_t* q2 = ecs_query(world, {
+        .terms = {{ .id = W_WindowID }}
+    });
+    if (!q2) return;
+
+    ecs_entity_t focused_window = 0;
+    ecs_iter_t qit2 = ecs_query_iter(world, q2);
+    while (ecs_query_next(&qit2)) {
+        for (int e = 0; e < qit2.count; e++) {
+            ecs_entity_t we = qit2.entities[e];
+            const W_Window* w = (const W_Window*)ecs_get_id(world, we, W_WindowID);
+            if (!w || !w->visible) continue;
+
+            /* Check if this window entity (which has W_Focusable) has focus */
+            if (W_FocusState.focused_entity == we) {
+                focused_window = we;
+                break;
+            }
+
+            /* Check if any child of this window has focus */
+            ecs_iter_t cit = ecs_children(world, we);
+            while (ecs_children_next(&cit)) {
+                for (int c = 0; c < cit.count; c++) {
+                    if (W_FocusState.focused_entity == cit.entities[c]) {
+                        focused_window = we;
+                    }
+                }
+            }
+            if (focused_window != 0) break;
+        }
+        if (focused_window != 0) break;
+    }
+    ecs_query_fini(q2);
+
+    /* Edge-detect: only raise when focus changes to a different window */
+    if (focused_window != 0 && focused_window != s_prev_focused_window) {
+        int new_z = max_z_order + 1;
+
+        /* Z-band compaction: if z_order exceeds 49, compact */
+        if (new_z > 49) {
+            /* Re-query and subtract minimum z_order from all windows */
+            ecs_query_t* q3 = ecs_query(world, {
+                .terms = {{ .id = W_WindowID }}
+            });
+            if (q3) {
+                int min_z = new_z;
+                ecs_iter_t qit3 = ecs_query_iter(world, q3);
+                while (ecs_query_next(&qit3)) {
+                    for (int e = 0; e < qit3.count; e++) {
+                        const W_Window* w = (const W_Window*)ecs_get_id(
+                            world, qit3.entities[e], W_WindowID);
+                        if (w && w->visible && w->z_order < min_z) {
+                            min_z = w->z_order;
+                        }
+                    }
+                }
+
+                /* Compact: subtract min from all windows */
+                ecs_iter_t qit4 = ecs_query_iter(world, q3);
+                while (ecs_query_next(&qit4)) {
+                    for (int e = 0; e < qit4.count; e++) {
+                        W_Window* w = (W_Window*)ecs_get_mut_id(
+                            world, qit4.entities[e], W_WindowID);
+                        if (w && w->visible) {
+                            w->z_order -= min_z;
+                            /* Update overlay state */
+                            W_OverlayState os = { .visible = true,
+                                .z_index = 150 + w->z_order, .modal = true };
+                            ecs_set_id(world, qit4.entities[e],
+                                       W_OverlayStateID, sizeof(W_OverlayState), &os);
+                        }
+                    }
+                }
+                ecs_query_fini(q3);
+                new_z = max_z_order - min_z + 1;
+            }
+        }
+
+        /* Set focused window's z_order to new top */
+        W_Window* w = (W_Window*)ecs_get_mut_id(world, focused_window, W_WindowID);
+        if (w) {
+            w->z_order = new_z;
+            W_OverlayState os = { .visible = true,
+                .z_index = 150 + new_z, .modal = true };
+            ecs_set_id(world, focused_window,
+                       W_OverlayStateID, sizeof(W_OverlayState), &os);
+        }
+    }
+    s_prev_focused_window = focused_window;
+}
+
+/* ============================================================================
  * Focus System Callback
  * ============================================================================ */
 
@@ -449,9 +667,11 @@ static void focus_system_run(CELS_Iter* it) {
         }
     }
 
-    /* Process NavigationGroup entities for arrow key selection cycling */
+    /* Process overlay dismiss (modals first, then windows) */
     ecs_world_t* world = cels_get_world(ctx);
     if (world) {
+        process_modal_overlay(world, input);
+        process_window_overlay(world, input);
         process_navigation_groups(world, input);
         process_split_pane_navigation(world, input);
         process_scrollable_navigation(world, input);
@@ -480,6 +700,9 @@ void widgets_focus_system_register(void) {
     W_Collapsible_ensure();
     W_SplitPane_ensure();
     W_ScrollContainer_ensure();
+    W_Window_ensure();
+    W_Modal_ensure();
+    W_OverlayState_ensure();
 
     cels_entity_t components[] = { W_FocusableID };
     cels_system_declare("W_FocusSystem", CELS_Phase_OnUpdate,
