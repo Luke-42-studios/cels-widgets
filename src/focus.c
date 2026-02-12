@@ -345,6 +345,88 @@ static void process_split_pane_navigation(ecs_world_t* world, const CELS_Input* 
 }
 
 /* ============================================================================
+ * Scrollable Container Navigation
+ *
+ * For each W_ScrollContainer entity:
+ *   1. Auto-scroll: keep NavigationGroup's selected child visible
+ *   2. Keyboard scroll: PgUp/PgDn/Home/End direct scroll control
+ * ============================================================================ */
+
+static void process_scrollable_navigation(ecs_world_t* world, const CELS_Input* input) {
+    W_ScrollContainer_ensure();
+    W_Scrollable_ensure();
+    W_NavigationScope_ensure();
+
+    ecs_query_t* q = ecs_query(world, {
+        .terms = {{ .id = W_ScrollContainerID }}
+    });
+    if (!q) return;
+
+    /* Edge-detect PgUp/PgDn/Home/End */
+    bool pgup_edge  = (input->key_page_up   && !s_prev_input.key_page_up);
+    bool pgdn_edge  = (input->key_page_down && !s_prev_input.key_page_down);
+    bool home_edge  = (input->key_home      && !s_prev_input.key_home);
+    bool end_edge   = (input->key_end       && !s_prev_input.key_end);
+
+    ecs_iter_t qit = ecs_query_iter(world, q);
+    while (ecs_query_next(&qit)) {
+        for (int e = 0; e < qit.count; e++) {
+            ecs_entity_t sc_entity = qit.entities[e];
+
+            W_Scrollable* scr = (W_Scrollable*)ecs_get_mut_id(
+                world, sc_entity, W_ScrollableID);
+            if (!scr || scr->visible_count <= 0) continue;
+
+            const W_ScrollContainer* sc = (const W_ScrollContainer*)ecs_get_id(
+                world, sc_entity, W_ScrollContainerID);
+            (void)sc;
+
+            int visible = scr->visible_count;
+            int total = scr->total_count;
+
+            /* --- Auto-scroll to selected child --- */
+            /* Find NavigationScope under this scrollable (child or grandchild) */
+            ecs_entity_t nav = find_nav_scope_under(world, sc_entity);
+            if (nav != 0) {
+                const W_NavigationScope* scope = (const W_NavigationScope*)ecs_get_id(
+                    world, nav, W_NavigationScopeID);
+                if (scope) {
+                    int sel = scope->selected_index;
+                    /* Scroll up to show selected */
+                    if (sel < scr->scroll_offset) {
+                        scr->scroll_offset = sel;
+                    }
+                    /* Scroll down to show selected */
+                    if (sel >= scr->scroll_offset + visible) {
+                        scr->scroll_offset = sel - visible + 1;
+                    }
+                }
+            }
+
+            /* --- Keyboard scroll (edge-detected) --- */
+            if (pgup_edge) {
+                scr->scroll_offset -= visible;
+            }
+            if (pgdn_edge) {
+                scr->scroll_offset += visible;
+            }
+            if (home_edge) {
+                scr->scroll_offset = 0;
+            }
+            if (end_edge && total > visible) {
+                scr->scroll_offset = total - visible;
+            }
+
+            /* Write back (ScrollClampSystem enforces bounds at PostUpdate) */
+            ecs_set_id(world, sc_entity, W_ScrollableID,
+                       sizeof(W_Scrollable), scr);
+        }
+    }
+
+    ecs_query_fini(q);
+}
+
+/* ============================================================================
  * Focus System Callback
  * ============================================================================ */
 
@@ -372,6 +454,7 @@ static void focus_system_run(CELS_Iter* it) {
     if (world) {
         process_navigation_groups(world, input);
         process_split_pane_navigation(world, input);
+        process_scrollable_navigation(world, input);
     }
 
     /* Store input for edge detection on next frame */
@@ -396,6 +479,7 @@ void widgets_focus_system_register(void) {
     W_InteractState_ensure();
     W_Collapsible_ensure();
     W_SplitPane_ensure();
+    W_ScrollContainer_ensure();
 
     cels_entity_t components[] = { W_FocusableID };
     cels_system_declare("W_FocusSystem", CELS_Phase_OnUpdate,
