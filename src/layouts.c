@@ -1223,7 +1223,7 @@ void w_popup_layout(struct ecs_world_t* world, cels_entity_t self) {
 
     CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
     CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border.color;
-    CEL_Color title_fg = t->content_title.color;
+    CEL_Color title_fg = (s && s->title_color.a > 0) ? s->title_color : t->content_title.color;
     CEL_TextAttr title_attr = t->content_title.attr;
 
     int w = (d->width > 0) ? d->width : 40;
@@ -1233,6 +1233,31 @@ void w_popup_layout(struct ecs_world_t* world, cels_entity_t self) {
         ? CLAY_SIZING_FIXED((float)d->height)
         : CLAY_SIZING_FIT(0);
 
+    /* Backdrop: full-screen dim overlay behind popup */
+    if (d->backdrop) {
+        CEL_Color backdrop = (s && s->backdrop_color.a > 0)
+            ? s->backdrop_color : (CEL_Color){0, 0, 0, 200};
+        CEL_Clay(
+            .layout = {
+                .sizing = {
+                    .width = CLAY_SIZING_GROW(0),
+                    .height = CLAY_SIZING_GROW(0)
+                }
+            },
+            .backgroundColor = backdrop,
+            .floating = {
+                .attachTo = CLAY_ATTACH_TO_ROOT,
+                .attachPoints = {
+                    .element = CLAY_ATTACH_POINT_LEFT_TOP,
+                    .parent = CLAY_ATTACH_POINT_LEFT_TOP
+                },
+                .zIndex = 99,
+                .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_PASSTHROUGH
+            }
+        ) {}
+    }
+
+    /* Popup container: centered floating element */
     CEL_Clay(
         .layout = {
             .layoutDirection = CLAY_TOP_TO_BOTTOM,
@@ -1272,7 +1297,7 @@ void w_modal_layout(struct ecs_world_t* world, cels_entity_t self) {
 
     CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
     CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border_focused.color;
-    CEL_Color title_fg = t->content_title.color;
+    CEL_Color title_fg = (s && s->title_color.a > 0) ? s->title_color : t->content_title.color;
     CEL_TextAttr title_attr = t->content_title.attr;
 
     int w = (d->width > 0) ? d->width : 50;
@@ -1282,6 +1307,27 @@ void w_modal_layout(struct ecs_world_t* world, cels_entity_t self) {
         ? CLAY_SIZING_FIXED((float)d->height)
         : CLAY_SIZING_FIT(0);
 
+    /* Backdrop: always shown for modals (dimming is inherent to modal pattern) */
+    CEL_Clay(
+        .layout = {
+            .sizing = {
+                .width = CLAY_SIZING_GROW(0),
+                .height = CLAY_SIZING_GROW(0)
+            }
+        },
+        .backgroundColor = (CEL_Color){0, 0, 0, 200},
+        .floating = {
+            .attachTo = CLAY_ATTACH_TO_ROOT,
+            .attachPoints = {
+                .element = CLAY_ATTACH_POINT_LEFT_TOP,
+                .parent = CLAY_ATTACH_POINT_LEFT_TOP
+            },
+            .zIndex = 199,
+            .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_PASSTHROUGH
+        }
+    ) {}
+
+    /* Modal container: centered floating element at higher z-band than popup */
     CEL_Clay(
         .layout = {
             .layoutDirection = CLAY_TOP_TO_BOTTOM,
@@ -1429,59 +1475,103 @@ void w_toast_layout(struct ecs_world_t* world, cels_entity_t self) {
     const Widget_Theme* t = Widget_get_theme();
     const Widget_ToastStyle* s = d->style;
 
-    /* Severity-based colors */
+    /* Severity-based background color (style override > defaults) */
     CEL_Color bg_color;
-    CEL_Color text_fg;
+    const char* indicator;
     switch (d->severity) {
-        case 1:  bg_color = t->status_success.color; text_fg = t->primary_content.color; break;
-        case 2:  bg_color = t->status_warning.color; text_fg = t->surface.color; break;
-        case 3:  bg_color = t->status_error.color;   text_fg = t->primary_content.color; break;
-        default: bg_color = t->surface_alt.color;    text_fg = t->content.color; break;
+        case 1:  /* success */
+            bg_color = (s && s->success_color.a > 0) ? s->success_color
+                       : (CEL_Color){60, 180, 80, 255};
+            indicator = "[+] ";
+            break;
+        case 2:  /* warning */
+            bg_color = (s && s->warning_color.a > 0) ? s->warning_color
+                       : (CEL_Color){220, 180, 40, 255};
+            indicator = "[!] ";
+            break;
+        case 3:  /* error */
+            bg_color = (s && s->error_color.a > 0) ? s->error_color
+                       : (CEL_Color){200, 60, 60, 255};
+            indicator = "[x] ";
+            break;
+        default: /* info */
+            bg_color = (s && s->info_color.a > 0) ? s->info_color
+                       : t->primary.color;
+            indicator = "[i] ";
+            break;
     }
+    /* Style-level bg/fg overrides on top of severity */
     if (s && s->bg.a > 0) bg_color = s->bg;
-    if (s && s->fg.a > 0) text_fg = s->fg;
+    CEL_Color text_fg = (s && s->fg.a > 0) ? s->fg
+        : (CEL_Color){255, 255, 255, 255};
 
-    /* Position-based attach points */
+    /* Toast width: based on message length (indicator + message + padding), min 20, max 50 */
+    int msg_len = d->message ? (int)strlen(d->message) : 0;
+    int content_len = 4 + msg_len + 2; /* "[x] " + message + padding */
+    if (content_len < 20) content_len = 20;
+    if (content_len > 50) content_len = 50;
+    float toast_width = (float)content_len / CEL_CELL_ASPECT_RATIO;
+
+    /* Position-based attach points and offsets */
     Clay_FloatingAttachPoints attach;
+    Clay_Vector2 offset;
     switch (d->position) {
         case 1:  /* bottom-center */
             attach = (Clay_FloatingAttachPoints){
                 .element = CLAY_ATTACH_POINT_CENTER_BOTTOM,
                 .parent = CLAY_ATTACH_POINT_CENTER_BOTTOM
-            }; break;
+            };
+            offset = (Clay_Vector2){ .x = 0, .y = -1 };
+            break;
         case 2:  /* top-right */
             attach = (Clay_FloatingAttachPoints){
                 .element = CLAY_ATTACH_POINT_RIGHT_TOP,
                 .parent = CLAY_ATTACH_POINT_RIGHT_TOP
-            }; break;
+            };
+            offset = (Clay_Vector2){ .x = -2, .y = 1 };
+            break;
         case 3:  /* top-center */
             attach = (Clay_FloatingAttachPoints){
                 .element = CLAY_ATTACH_POINT_CENTER_TOP,
                 .parent = CLAY_ATTACH_POINT_CENTER_TOP
-            }; break;
-        default: /* bottom-right */
+            };
+            offset = (Clay_Vector2){ .x = 0, .y = 1 };
+            break;
+        default: /* 0 = bottom-right */
             attach = (Clay_FloatingAttachPoints){
                 .element = CLAY_ATTACH_POINT_RIGHT_BOTTOM,
                 .parent = CLAY_ATTACH_POINT_RIGHT_BOTTOM
-            }; break;
+            };
+            offset = (Clay_Vector2){ .x = -2, .y = -1 };
+            break;
     }
 
     CEL_Clay(
         .layout = {
-            .sizing = { .height = CLAY_SIZING_FIXED(1) },
+            .layoutDirection = CLAY_LEFT_TO_RIGHT,
+            .sizing = {
+                .width = CLAY_SIZING_FIXED(toast_width),
+                .height = CLAY_SIZING_FIT(0)
+            },
             .padding = { .left = 1, .right = 1 }
         },
         .backgroundColor = bg_color,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = attach,
-            .offset = { .x = -1, .y = -1 },
-            .zIndex = 250,
+            .offset = offset,
+            .zIndex = 300,
             .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_PASSTHROUGH
         }
     ) {
+        /* Severity indicator prefix */
+        CLAY_TEXT(CEL_Clay_Text(indicator, (int)strlen(indicator)),
+            CLAY_TEXT_CONFIG({ .textColor = text_fg,
+                              .userData = w_pack_text_attr((CEL_TextAttr){ .bold = true }) }));
+
+        /* Message text */
         if (d->message) {
-            CLAY_TEXT(CEL_Clay_Text(d->message, (int)strlen(d->message)),
+            CLAY_TEXT(CEL_Clay_Text(d->message, msg_len),
                 CLAY_TEXT_CONFIG({ .textColor = text_fg,
                                   .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
         }

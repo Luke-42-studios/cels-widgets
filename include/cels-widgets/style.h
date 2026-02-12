@@ -332,15 +332,18 @@ typedef struct Widget_ToastStyle {
 /* Popup style */
 typedef struct Widget_PopupStyle {
     W_STYLE_COMMON_FIELDS
-    CEL_Sizing      width;        /* Default: FIXED(40) */
-    CEL_Sizing      height;       /* Default: FIT */
+    CEL_Color       backdrop_color; /* {0} = dark dim default {0,0,0,200} */
+    CEL_Color       title_color;    /* {0} = theme content_title */
+    CEL_Sizing      width;          /* Default: FIXED(40) */
+    CEL_Sizing      height;         /* Default: FIT */
 } Widget_PopupStyle;
 
 /* Modal style */
 typedef struct Widget_ModalStyle {
     W_STYLE_COMMON_FIELDS
-    CEL_Sizing      width;        /* Default: FIXED(50) */
-    CEL_Sizing      height;       /* Default: FIT */
+    CEL_Color       title_color;    /* {0} = theme content_title */
+    CEL_Sizing      width;          /* Default: FIXED(50) */
+    CEL_Sizing      height;         /* Default: FIT */
 } Widget_ModalStyle;
 
 /* Window style */

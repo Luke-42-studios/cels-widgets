@@ -340,10 +340,11 @@ CEL_Composition(WToast, const char* message; float duration; int severity; int p
     CEL_Has(ClayUI, .layout_fn = w_toast_layout);
     CEL_Has(W_Toast, .message = props.message,
             .duration = props.duration > 0 ? props.duration : 3.0f,
-            .severity = props.severity, .position = props.position,
+            .elapsed = 0, .severity = props.severity,
+            .position = props.position, .dismissed = false,
             .style = props.style);
     CEL_Has(W_OverlayState, .visible = true,
-            .z_index = 250, .modal = false);
+            .z_index = 300, .modal = false);
 }
 #define Widget_Toast(...) CEL_Init(WToast, __VA_ARGS__)
 
