@@ -197,6 +197,154 @@ static void process_navigation_groups(ecs_world_t* world, const CELS_Input* inpu
 }
 
 /* ============================================================================
+ * Split Pane Navigation (Ctrl+Arrow)
+ *
+ * When Ctrl+Arrow is detected, find a W_SplitPane ancestor of the currently
+ * focused NavigationGroup, determine which pane the focus is in, and switch
+ * focus to the first selectable child in the other pane.
+ * ============================================================================ */
+
+/* Ctrl+Arrow key codes (must match tui_input.c definitions) */
+#define CELS_KEY_CTRL_UP    600
+#define CELS_KEY_CTRL_DOWN  601
+#define CELS_KEY_CTRL_RIGHT 602
+#define CELS_KEY_CTRL_LEFT  603
+
+/* Check if entity is a descendant of ancestor via parent chain traversal */
+static bool is_descendant_of(ecs_world_t* world, ecs_entity_t entity, ecs_entity_t ancestor) {
+    ecs_entity_t current = entity;
+    int depth = 0;
+    while (current != 0 && depth < 32) {
+        if (current == ancestor) return true;
+        current = ecs_get_parent(world, current);
+        depth++;
+    }
+    return false;
+}
+
+/* Find the first W_NavigationScope entity under a given parent (pane child) */
+static ecs_entity_t find_nav_scope_under(ecs_world_t* world, ecs_entity_t parent) {
+    /* Check direct children first */
+    ecs_iter_t it = ecs_children(world, parent);
+    while (ecs_children_next(&it)) {
+        for (int i = 0; i < it.count; i++) {
+            if (ecs_has_id(world, it.entities[i], W_NavigationScopeID)) {
+                return it.entities[i];
+            }
+        }
+    }
+    /* Check grandchildren (one level deep) */
+    ecs_iter_t it2 = ecs_children(world, parent);
+    while (ecs_children_next(&it2)) {
+        for (int i = 0; i < it2.count; i++) {
+            ecs_iter_t it3 = ecs_children(world, it2.entities[i]);
+            while (ecs_children_next(&it3)) {
+                for (int j = 0; j < it3.count; j++) {
+                    if (ecs_has_id(world, it3.entities[j], W_NavigationScopeID)) {
+                        return it3.entities[j];
+                    }
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+static void process_split_pane_navigation(ecs_world_t* world, const CELS_Input* input) {
+    /* Only act on Ctrl+Arrow edge (not held) */
+    if (!input->has_raw_key) return;
+    if (input->raw_key < CELS_KEY_CTRL_UP || input->raw_key > CELS_KEY_CTRL_LEFT) return;
+    if (s_prev_input.has_raw_key && s_prev_input.raw_key == input->raw_key) return;
+
+    W_SplitPane_ensure();
+    W_NavigationScope_ensure();
+
+    /* Query all W_SplitPane entities */
+    ecs_query_t* q = ecs_query(world, {
+        .terms = {{ .id = W_SplitPaneID }}
+    });
+    if (!q) return;
+
+    ecs_iter_t qit = ecs_query_iter(world, q);
+    while (ecs_query_next(&qit)) {
+        for (int e = 0; e < qit.count; e++) {
+            ecs_entity_t split_entity = qit.entities[e];
+            const W_SplitPane* split = (const W_SplitPane*)ecs_get_id(
+                world, split_entity, W_SplitPaneID);
+            if (!split) continue;
+
+            /* Filter Ctrl+Arrow by split direction:
+             * Horizontal split (left|right): Ctrl+Left/Right switch panes
+             * Vertical split (top|bottom): Ctrl+Up/Down switch panes */
+            bool relevant = false;
+            if (split->direction == 0) {
+                relevant = (input->raw_key == CELS_KEY_CTRL_LEFT ||
+                            input->raw_key == CELS_KEY_CTRL_RIGHT);
+            } else {
+                relevant = (input->raw_key == CELS_KEY_CTRL_UP ||
+                            input->raw_key == CELS_KEY_CTRL_DOWN);
+            }
+            if (!relevant) continue;
+
+            /* Get the two pane children (child 0 and child 1) */
+            ecs_entity_t pane_children[2] = {0, 0};
+            int pane_idx = 0;
+            ecs_iter_t cit = ecs_children(world, split_entity);
+            while (ecs_children_next(&cit) && pane_idx < 2) {
+                for (int c = 0; c < cit.count && pane_idx < 2; c++) {
+                    pane_children[pane_idx++] = cit.entities[c];
+                }
+            }
+            if (pane_children[0] == 0 || pane_children[1] == 0) continue;
+
+            /* Find which pane has the currently active NavigationScope */
+            W_NavigationState_ensure();
+            ecs_entity_t active_scope = W_NavigationState.active_scope;
+
+            int current_pane = -1;
+            if (active_scope != 0) {
+                if (is_descendant_of(world, active_scope, pane_children[0]) ||
+                    active_scope == pane_children[0]) {
+                    current_pane = 0;
+                } else if (is_descendant_of(world, active_scope, pane_children[1]) ||
+                           active_scope == pane_children[1]) {
+                    current_pane = 1;
+                }
+            }
+
+            /* If no active scope found in either pane, try to find any
+             * NavigationScope in pane 0 or pane 1 that has selected children */
+            if (current_pane == -1) {
+                ecs_entity_t nav0 = find_nav_scope_under(world, pane_children[0]);
+                if (nav0 != 0) {
+                    current_pane = 0;
+                } else {
+                    current_pane = 0; /* Default to pane 0 */
+                }
+            }
+
+            /* Switch to the other pane */
+            int target_pane = (current_pane == 0) ? 1 : 0;
+            ecs_entity_t target_nav = find_nav_scope_under(world, pane_children[target_pane]);
+            if (target_nav == 0) continue;
+
+            /* Activate the target NavigationScope */
+            W_NavigationState.active_scope = target_nav;
+
+            /* Set selected_index to 0 in the target scope and ensure
+             * at least the first child is selected */
+            W_NavigationScope* target_scope = (W_NavigationScope*)ecs_get_mut_id(
+                world, target_nav, W_NavigationScopeID);
+            if (target_scope) {
+                target_scope->selected_index = 0;
+            }
+        }
+    }
+
+    ecs_query_fini(q);
+}
+
+/* ============================================================================
  * Focus System Callback
  * ============================================================================ */
 
@@ -223,6 +371,7 @@ static void focus_system_run(CELS_Iter* it) {
     ecs_world_t* world = cels_get_world(ctx);
     if (world) {
         process_navigation_groups(world, input);
+        process_split_pane_navigation(world, input);
     }
 
     /* Store input for edge detection on next frame */
@@ -246,6 +395,7 @@ void widgets_focus_system_register(void) {
     W_Selectable_ensure();
     W_InteractState_ensure();
     W_Collapsible_ensure();
+    W_SplitPane_ensure();
 
     cels_entity_t components[] = { W_FocusableID };
     cels_system_declare("W_FocusSystem", CELS_Phase_OnUpdate,
