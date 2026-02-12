@@ -47,6 +47,7 @@ extern void w_table_layout(struct ecs_world_t* world, cels_entity_t self);
 
 /* Structural containers */
 extern void w_collapsible_layout(struct ecs_world_t* world, cels_entity_t self);
+extern void w_split_pane_layout(struct ecs_world_t* world, cels_entity_t self);
 
 /* Radio */
 extern void w_radio_button_layout(struct ecs_world_t* world, cels_entity_t self);

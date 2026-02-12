@@ -185,6 +185,14 @@ CEL_Composition(WCollapsible, const char* title; bool collapsed; int indent;
 }
 #define Widget_Collapsible(...) CEL_Init(WCollapsible, __VA_ARGS__)
 
+CEL_Composition(WSplitPane, float ratio; int direction;
+                 const Widget_SplitStyle* style;) {
+    CEL_Has(ClayUI, .layout_fn = w_split_pane_layout);
+    CEL_Has(W_SplitPane, .ratio = props.ratio, .direction = props.direction,
+            .style = props.style);
+}
+#define Widget_Split(...) CEL_Init(WSplitPane, __VA_ARGS__)
+
 /* ============================================================================
  * Radio Compositions
  * ============================================================================ */
@@ -296,5 +304,6 @@ CEL_Composition(WNavigationGroup,
 #define WListView(...)    Widget_ListView(__VA_ARGS__)
 #define WListItem(...)    Widget_ListItem(__VA_ARGS__)
 #define WCollapsible(...) Widget_Collapsible(__VA_ARGS__)
+#define WSplitPane(...)   Widget_Split(__VA_ARGS__)
 
 #endif /* CELS_WIDGETS_COMPOSITIONS_H */

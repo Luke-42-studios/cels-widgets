@@ -34,6 +34,7 @@ CEL_Module(Widgets) {
     W_Divider_ensure();
     W_Table_ensure();
     W_Collapsible_ensure();
+    W_SplitPane_ensure();
     W_RadioButton_ensure();
     W_RadioGroup_ensure();
     W_TabBar_ensure();

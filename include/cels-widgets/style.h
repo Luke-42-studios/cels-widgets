@@ -271,6 +271,12 @@ typedef struct Widget_CollapsibleStyle {
     CEL_Color title_color;     /* {0} = theme content_title */
 } Widget_CollapsibleStyle;
 
+/* Split pane style */
+typedef struct Widget_SplitStyle {
+    W_STYLE_COMMON_FIELDS
+    CEL_Color divider_color; /* {0} = theme divider */
+} Widget_SplitStyle;
+
 /* RadioButton style */
 typedef struct Widget_RadioButtonStyle {
     W_STYLE_COMMON_FIELDS

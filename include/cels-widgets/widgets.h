@@ -173,6 +173,13 @@ CEL_Define(W_Collapsible, {
     const Widget_CollapsibleStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
+/* SplitPane: two-region split container with configurable ratio */
+CEL_Define(W_SplitPane, {
+    float ratio;            /* Split ratio for first pane (0.0-1.0, default 0.5) */
+    int direction;          /* 0 = horizontal (left|right), 1 = vertical (top|bottom) */
+    const Widget_SplitStyle* style; /* Visual overrides (NULL = defaults) */
+});
+
 /* ============================================================================
  * Radio Components
  * ============================================================================ */

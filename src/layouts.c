@@ -1210,3 +1210,95 @@ void w_navigation_group_layout(struct ecs_world_t* world, cels_entity_t self) {
         CEL_Clay_Children();
     }
 }
+
+/* ============================================================================
+ * Split Pane Layout
+ * ============================================================================ */
+
+void w_split_pane_layout(struct ecs_world_t* world, cels_entity_t self) {
+    const W_SplitPane* d = (const W_SplitPane*)ecs_get_id(world, self, W_SplitPane_ensure());
+    const Widget_Theme* t = Widget_get_theme();
+    const Widget_SplitStyle* s = (d ? d->style : NULL);
+
+    float ratio = (d && d->ratio > 0.0f) ? d->ratio : 0.5f;
+    int direction = d ? d->direction : 0;
+
+    /* Divider color: style override or theme */
+    CEL_Color div_color = (s && s->divider_color.a > 0) ? s->divider_color : t->divider.color;
+
+    /* Outer container: direction-appropriate flex */
+    Clay_LayoutDirection layout_dir = (direction == 0)
+        ? CLAY_LEFT_TO_RIGHT : CLAY_TOP_TO_BOTTOM;
+
+    CEL_Clay(
+        .layout = {
+            .layoutDirection = layout_dir,
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) }
+        }
+    ) {
+        /* Pane 1: PERCENT(ratio) in split direction, GROW in other */
+        if (direction == 0) {
+            /* Horizontal: width = PERCENT(ratio), height = GROW */
+            CEL_Clay(
+                .layout = {
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    .sizing = {
+                        .width = CLAY_SIZING_PERCENT(ratio),
+                        .height = CLAY_SIZING_GROW(0)
+                    }
+                }
+            ) {
+                CEL_Clay_ChildAt(0);
+            }
+        } else {
+            /* Vertical: width = GROW, height = PERCENT(ratio) */
+            CEL_Clay(
+                .layout = {
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    .sizing = {
+                        .width = CLAY_SIZING_GROW(0),
+                        .height = CLAY_SIZING_PERCENT(ratio)
+                    }
+                }
+            ) {
+                CEL_Clay_ChildAt(0);
+            }
+        }
+
+        /* Divider: FIXED(1) in split direction, GROW in other */
+        if (direction == 0) {
+            CEL_Clay(
+                .layout = {
+                    .sizing = {
+                        .width = CLAY_SIZING_FIXED(1),
+                        .height = CLAY_SIZING_GROW(0)
+                    }
+                },
+                .backgroundColor = div_color
+            ) {}
+        } else {
+            CEL_Clay(
+                .layout = {
+                    .sizing = {
+                        .width = CLAY_SIZING_GROW(0),
+                        .height = CLAY_SIZING_FIXED(1)
+                    }
+                },
+                .backgroundColor = div_color
+            ) {}
+        }
+
+        /* Pane 2: GROW to fill remaining space */
+        CEL_Clay(
+            .layout = {
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                .sizing = {
+                    .width = CLAY_SIZING_GROW(0),
+                    .height = CLAY_SIZING_GROW(0)
+                }
+            }
+        ) {
+            CEL_Clay_ChildAt(1);
+        }
+    }
+}
