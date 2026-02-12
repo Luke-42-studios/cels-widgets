@@ -323,6 +323,10 @@ typedef struct Widget_ListItemStyle {
 /* Toast style */
 typedef struct Widget_ToastStyle {
     W_STYLE_COMMON_FIELDS
+    CEL_Color info_color;     /* {0} = theme primary */
+    CEL_Color success_color;  /* {0} = green default */
+    CEL_Color warning_color;  /* {0} = yellow default */
+    CEL_Color error_color;    /* {0} = red default */
 } Widget_ToastStyle;
 
 /* Popup style */
@@ -342,8 +346,8 @@ typedef struct Widget_ModalStyle {
 /* Window style */
 typedef struct Widget_WindowStyle {
     W_STYLE_COMMON_FIELDS
-    CEL_Color       title_bg;     /* {0} = theme primary */
-    CEL_Color       title_fg;     /* {0} = theme primary_content */
+    CEL_Color       title_color;  /* {0} = theme content_title */
+    CEL_Color       close_color;  /* {0} = theme status_error */
 } Widget_WindowStyle;
 
 /* ============================================================================

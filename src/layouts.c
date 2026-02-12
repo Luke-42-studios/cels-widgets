@@ -1212,6 +1212,283 @@ void w_navigation_group_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 /* ============================================================================
+ * Overlay Layouts
+ * ============================================================================ */
+
+void w_popup_layout(struct ecs_world_t* world, cels_entity_t self) {
+    const W_Popup* d = (const W_Popup*)ecs_get_id(world, self, W_Popup_ensure());
+    if (!d || !d->visible) return;
+    const Widget_Theme* t = Widget_get_theme();
+    const Widget_PopupStyle* s = d->style;
+
+    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
+    CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border.color;
+    CEL_Color title_fg = t->content_title.color;
+    CEL_TextAttr title_attr = t->content_title.attr;
+
+    int w = (d->width > 0) ? d->width : 40;
+    float w_px = (float)w / CEL_CELL_ASPECT_RATIO;
+
+    Clay_SizingAxis h_axis = (d->height > 0)
+        ? CLAY_SIZING_FIXED((float)d->height)
+        : CLAY_SIZING_FIT(0);
+
+    CEL_Clay(
+        .layout = {
+            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            .sizing = { .width = CLAY_SIZING_FIXED(w_px), .height = h_axis },
+            .padding = CLAY_PADDING_ALL(1),
+            .childGap = 1
+        },
+        .backgroundColor = bg_color,
+        .border = {
+            .color = bdr_color,
+            .width = CLAY_BORDER_OUTSIDE(1)
+        },
+        .floating = {
+            .attachTo = CLAY_ATTACH_TO_ROOT,
+            .attachPoints = {
+                .element = CLAY_ATTACH_POINT_CENTER_CENTER,
+                .parent = CLAY_ATTACH_POINT_CENTER_CENTER
+            },
+            .zIndex = 100,
+            .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_PASSTHROUGH
+        }
+    ) {
+        if (d->title) {
+            CLAY_TEXT(CEL_Clay_Text(d->title, (int)strlen(d->title)),
+                CLAY_TEXT_CONFIG({ .textColor = title_fg,
+                                  .userData = w_pack_text_attr(title_attr) }));
+        }
+        CEL_Clay_Children();
+    }
+}
+
+void w_modal_layout(struct ecs_world_t* world, cels_entity_t self) {
+    const W_Modal* d = (const W_Modal*)ecs_get_id(world, self, W_Modal_ensure());
+    if (!d || !d->visible) return;
+    const Widget_Theme* t = Widget_get_theme();
+    const Widget_ModalStyle* s = d->style;
+
+    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
+    CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border_focused.color;
+    CEL_Color title_fg = t->content_title.color;
+    CEL_TextAttr title_attr = t->content_title.attr;
+
+    int w = (d->width > 0) ? d->width : 50;
+    float w_px = (float)w / CEL_CELL_ASPECT_RATIO;
+
+    Clay_SizingAxis h_axis = (d->height > 0)
+        ? CLAY_SIZING_FIXED((float)d->height)
+        : CLAY_SIZING_FIT(0);
+
+    CEL_Clay(
+        .layout = {
+            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            .sizing = { .width = CLAY_SIZING_FIXED(w_px), .height = h_axis },
+            .padding = CLAY_PADDING_ALL(1),
+            .childGap = 1
+        },
+        .backgroundColor = bg_color,
+        .border = {
+            .color = bdr_color,
+            .width = CLAY_BORDER_OUTSIDE(1)
+        },
+        .floating = {
+            .attachTo = CLAY_ATTACH_TO_ROOT,
+            .attachPoints = {
+                .element = CLAY_ATTACH_POINT_CENTER_CENTER,
+                .parent = CLAY_ATTACH_POINT_CENTER_CENTER
+            },
+            .zIndex = 200,
+            .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_PASSTHROUGH
+        }
+    ) {
+        if (d->title) {
+            CLAY_TEXT(CEL_Clay_Text(d->title, (int)strlen(d->title)),
+                CLAY_TEXT_CONFIG({ .textColor = title_fg,
+                                  .userData = w_pack_text_attr(title_attr) }));
+        }
+        CEL_Clay_Children();
+    }
+}
+
+void w_window_layout(struct ecs_world_t* world, cels_entity_t self) {
+    const W_Window* d = (const W_Window*)ecs_get_id(world, self, W_Window_ensure());
+    if (!d || !d->visible) return;
+    const Widget_Theme* t = Widget_get_theme();
+    const Widget_WindowStyle* s = d->style;
+
+    /* Resolve colors from theme + style overrides */
+    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
+    CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border.color;
+    CEL_Color title_fg = (s && s->title_color.a > 0) ? s->title_color : t->content_title.color;
+    CEL_Color close_fg = (s && s->close_color.a > 0) ? s->close_color : t->status_error.color;
+    CEL_TextAttr title_attr = t->content_title.attr;
+
+    int w = (d->width > 0) ? d->width : 40;
+    float w_px = (float)w / CEL_CELL_ASPECT_RATIO;
+
+    Clay_SizingAxis h_axis = (d->height > 0)
+        ? CLAY_SIZING_FIXED((float)d->height)
+        : CLAY_SIZING_FIT(0);
+
+    /* Position: center if x==0 && y==0, otherwise offset from top-left */
+    Clay_FloatingAttachPoints attach;
+    Clay_Vector2 offset;
+    if (d->x == 0 && d->y == 0) {
+        attach = (Clay_FloatingAttachPoints){
+            .element = CLAY_ATTACH_POINT_CENTER_CENTER,
+            .parent = CLAY_ATTACH_POINT_CENTER_CENTER
+        };
+        offset = (Clay_Vector2){ 0, 0 };
+    } else {
+        attach = (Clay_FloatingAttachPoints){
+            .element = CLAY_ATTACH_POINT_LEFT_TOP,
+            .parent = CLAY_ATTACH_POINT_LEFT_TOP
+        };
+        offset = (Clay_Vector2){
+            .x = (float)d->x / CEL_CELL_ASPECT_RATIO,
+            .y = (float)d->y
+        };
+    }
+
+    int z = 150 + d->z_order;
+
+    /* Window container: floating element */
+    CEL_Clay(
+        .layout = {
+            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            .sizing = { .width = CLAY_SIZING_FIXED(w_px), .height = h_axis }
+        },
+        .backgroundColor = bg_color,
+        .border = {
+            .color = bdr_color,
+            .width = CLAY_BORDER_OUTSIDE(1)
+        },
+        .floating = {
+            .attachTo = CLAY_ATTACH_TO_ROOT,
+            .attachPoints = attach,
+            .offset = offset,
+            .zIndex = (int16_t)z,
+            .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_PASSTHROUGH
+        }
+    ) {
+        /* Title bar row: title left, [X] right */
+        CEL_Clay(
+            .layout = {
+                .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) },
+                .padding = { .left = 1, .right = 1 },
+                .childAlignment = { .x = CLAY_ALIGN_X_LEFT }
+            },
+            .border = {
+                .color = bdr_color,
+                .width = { .bottom = 1 }
+            }
+        ) {
+            /* Title text: [ Title ] */
+            if (d->title) {
+                char title_buf[64];
+                int title_len = snprintf(title_buf, sizeof(title_buf), "[ %s ]", d->title);
+                CLAY_TEXT(CEL_Clay_Text(title_buf, title_len),
+                    CLAY_TEXT_CONFIG({ .textColor = title_fg,
+                                      .userData = w_pack_text_attr(title_attr) }));
+            }
+
+            /* Spacer pushes [X] to the right */
+            CEL_Clay(
+                .layout = { .sizing = { .width = CLAY_SIZING_GROW(0) } }
+            ) {}
+
+            /* Close indicator [X] */
+            if (d->on_close) {
+                CLAY_TEXT(CLAY_STRING("[X]"),
+                    CLAY_TEXT_CONFIG({ .textColor = close_fg,
+                                      .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+            }
+        }
+
+        /* Content area */
+        CEL_Clay(
+            .layout = {
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
+                .padding = CLAY_PADDING_ALL(1),
+                .childGap = 1
+            }
+        ) {
+            CEL_Clay_Children();
+        }
+    }
+}
+
+void w_toast_layout(struct ecs_world_t* world, cels_entity_t self) {
+    const W_Toast* d = (const W_Toast*)ecs_get_id(world, self, W_Toast_ensure());
+    if (!d || d->dismissed) return;
+    const Widget_Theme* t = Widget_get_theme();
+    const Widget_ToastStyle* s = d->style;
+
+    /* Severity-based colors */
+    CEL_Color bg_color;
+    CEL_Color text_fg;
+    switch (d->severity) {
+        case 1:  bg_color = t->status_success.color; text_fg = t->primary_content.color; break;
+        case 2:  bg_color = t->status_warning.color; text_fg = t->surface.color; break;
+        case 3:  bg_color = t->status_error.color;   text_fg = t->primary_content.color; break;
+        default: bg_color = t->surface_alt.color;    text_fg = t->content.color; break;
+    }
+    if (s && s->bg.a > 0) bg_color = s->bg;
+    if (s && s->fg.a > 0) text_fg = s->fg;
+
+    /* Position-based attach points */
+    Clay_FloatingAttachPoints attach;
+    switch (d->position) {
+        case 1:  /* bottom-center */
+            attach = (Clay_FloatingAttachPoints){
+                .element = CLAY_ATTACH_POINT_CENTER_BOTTOM,
+                .parent = CLAY_ATTACH_POINT_CENTER_BOTTOM
+            }; break;
+        case 2:  /* top-right */
+            attach = (Clay_FloatingAttachPoints){
+                .element = CLAY_ATTACH_POINT_RIGHT_TOP,
+                .parent = CLAY_ATTACH_POINT_RIGHT_TOP
+            }; break;
+        case 3:  /* top-center */
+            attach = (Clay_FloatingAttachPoints){
+                .element = CLAY_ATTACH_POINT_CENTER_TOP,
+                .parent = CLAY_ATTACH_POINT_CENTER_TOP
+            }; break;
+        default: /* bottom-right */
+            attach = (Clay_FloatingAttachPoints){
+                .element = CLAY_ATTACH_POINT_RIGHT_BOTTOM,
+                .parent = CLAY_ATTACH_POINT_RIGHT_BOTTOM
+            }; break;
+    }
+
+    CEL_Clay(
+        .layout = {
+            .sizing = { .height = CLAY_SIZING_FIXED(1) },
+            .padding = { .left = 1, .right = 1 }
+        },
+        .backgroundColor = bg_color,
+        .floating = {
+            .attachTo = CLAY_ATTACH_TO_ROOT,
+            .attachPoints = attach,
+            .offset = { .x = -1, .y = -1 },
+            .zIndex = 250,
+            .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_PASSTHROUGH
+        }
+    ) {
+        if (d->message) {
+            CLAY_TEXT(CEL_Clay_Text(d->message, (int)strlen(d->message)),
+                CLAY_TEXT_CONFIG({ .textColor = text_fg,
+                                  .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+        }
+    }
+}
+
+/* ============================================================================
  * Split Pane Layout
  * ============================================================================ */
 

@@ -66,4 +66,10 @@ extern void w_list_item_layout(struct ecs_world_t* world, cels_entity_t self);
 /* Navigation Group */
 extern void w_navigation_group_layout(struct ecs_world_t* world, cels_entity_t self);
 
+/* Overlay */
+extern void w_popup_layout(struct ecs_world_t* world, cels_entity_t self);
+extern void w_modal_layout(struct ecs_world_t* world, cels_entity_t self);
+extern void w_window_layout(struct ecs_world_t* world, cels_entity_t self);
+extern void w_toast_layout(struct ecs_world_t* world, cels_entity_t self);
+
 #endif /* CELS_WIDGETS_LAYOUTS_H */

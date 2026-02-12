@@ -289,6 +289,65 @@ CEL_Composition(WNavigationGroup,
 #define Widget_NavigationGroup(...) CEL_Init(WNavigationGroup, __VA_ARGS__)
 
 /* ============================================================================
+ * Overlay Compositions
+ * ============================================================================ */
+
+CEL_Composition(WPopup, const char* title; bool visible; bool backdrop; int width; int height;
+                 const Widget_PopupStyle* style;) {
+    CEL_Has(ClayUI, .layout_fn = w_popup_layout);
+    CEL_Has(W_Popup, .title = props.title, .visible = props.visible,
+            .backdrop = props.backdrop,
+            .width = props.width > 0 ? props.width : 40,
+            .height = props.height, .style = props.style);
+    CEL_Has(W_OverlayState, .visible = props.visible,
+            .z_index = 100, .modal = false);
+}
+#define Widget_Popup(...) CEL_Init(WPopup, __VA_ARGS__)
+
+CEL_Composition(WModal, const char* title; bool visible; int width; int height;
+                 void (*on_dismiss)(void); const Widget_ModalStyle* style;) {
+    CEL_Has(ClayUI, .layout_fn = w_modal_layout);
+    CEL_Has(W_Modal, .title = props.title, .visible = props.visible,
+            .width = props.width > 0 ? props.width : 50,
+            .height = props.height,
+            .on_dismiss = props.on_dismiss, .style = props.style);
+    CEL_Has(W_OverlayState, .visible = props.visible,
+            .z_index = 200, .modal = true);
+    CEL_Has(W_NavigationScope, .wrap = true, .direction = 0);
+    CEL_Has(W_Focusable);
+}
+#define Widget_Modal(...) CEL_Init(WModal, __VA_ARGS__)
+
+CEL_Composition(WWindow, const char* title; bool visible; int x; int y;
+                 int width; int height; int z_order;
+                 void (*on_close)(void); const Widget_WindowStyle* style;) {
+    CEL_Has(ClayUI, .layout_fn = w_window_layout);
+    CEL_Has(W_Window, .title = props.title, .visible = props.visible,
+            .x = props.x, .y = props.y,
+            .width = props.width > 0 ? props.width : 40,
+            .height = props.height,
+            .z_order = props.z_order,
+            .on_close = props.on_close, .style = props.style);
+    CEL_Has(W_OverlayState, .visible = props.visible,
+            .z_index = 150 + props.z_order, .modal = true);
+    CEL_Has(W_NavigationScope, .wrap = true, .direction = 0);
+    CEL_Has(W_Focusable);
+}
+#define Widget_Window(...) CEL_Init(WWindow, __VA_ARGS__)
+
+CEL_Composition(WToast, const char* message; float duration; int severity; int position;
+                 const Widget_ToastStyle* style;) {
+    CEL_Has(ClayUI, .layout_fn = w_toast_layout);
+    CEL_Has(W_Toast, .message = props.message,
+            .duration = props.duration > 0 ? props.duration : 3.0f,
+            .severity = props.severity, .position = props.position,
+            .style = props.style);
+    CEL_Has(W_OverlayState, .visible = true,
+            .z_index = 250, .modal = false);
+}
+#define Widget_Toast(...) CEL_Init(WToast, __VA_ARGS__)
+
+/* ============================================================================
  * Backward Compatibility (v0.2 -> v0.3)
  * ============================================================================ */
 #define WText(...)        Widget_Text(__VA_ARGS__)
@@ -316,5 +375,9 @@ CEL_Composition(WNavigationGroup,
 #define WCollapsible(...) Widget_Collapsible(__VA_ARGS__)
 #define WSplitPane(...)   Widget_Split(__VA_ARGS__)
 #define WScrollContainer(...) Widget_Scrollable(__VA_ARGS__)
+#define WPopup(...)       Widget_Popup(__VA_ARGS__)
+#define WModal(...)       Widget_Modal(__VA_ARGS__)
+#define WWindow(...)      Widget_Window(__VA_ARGS__)
+#define WToast(...)       Widget_Toast(__VA_ARGS__)
 
 #endif /* CELS_WIDGETS_COMPOSITIONS_H */
