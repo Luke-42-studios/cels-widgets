@@ -174,6 +174,17 @@ CEL_Composition(WTable, int row_count; const char** keys; const char** values;
 }
 #define Widget_Table(...) CEL_Init(WTable, __VA_ARGS__)
 
+CEL_Composition(WCollapsible, const char* title; bool collapsed; int indent;
+                 const Widget_CollapsibleStyle* style;) {
+    CEL_Has(ClayUI, .layout_fn = w_collapsible_layout);
+    CEL_Has(W_Collapsible, .title = props.title, .collapsed = props.collapsed,
+            .indent = props.indent, .style = props.style);
+    CEL_Has(W_Selectable, .selected = false);
+    CEL_Has(W_InteractState);
+    CEL_Has(W_Focusable);
+}
+#define Widget_Collapsible(...) CEL_Init(WCollapsible, __VA_ARGS__)
+
 /* ============================================================================
  * Radio Compositions
  * ============================================================================ */
@@ -284,5 +295,6 @@ CEL_Composition(WNavigationGroup,
 #define WStatusBar(...)   Widget_StatusBar(__VA_ARGS__)
 #define WListView(...)    Widget_ListView(__VA_ARGS__)
 #define WListItem(...)    Widget_ListItem(__VA_ARGS__)
+#define WCollapsible(...) Widget_Collapsible(__VA_ARGS__)
 
 #endif /* CELS_WIDGETS_COMPOSITIONS_H */

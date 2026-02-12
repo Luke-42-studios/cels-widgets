@@ -69,6 +69,7 @@ static void process_navigation_groups(ecs_world_t* world, const CELS_Input* inpu
     W_Selectable_ensure();
     W_InteractState_ensure();
     W_Button_ensure();
+    W_Collapsible_ensure();
 
     /* Query all entities with W_NavigationScope */
     ecs_query_t* q = ecs_query(world, {
@@ -177,6 +178,17 @@ static void process_navigation_groups(ecs_world_t* world, const CELS_Input* inpu
                 if (btn && btn->on_press) {
                     btn->on_press();
                 }
+
+                /* Collapsible toggle: Enter/Space toggles collapsed state */
+                if (ecs_has_id(world, selected_child, W_CollapsibleID)) {
+                    W_Collapsible* col = (W_Collapsible*)ecs_get_mut_id(
+                        world, selected_child, W_CollapsibleID);
+                    if (col) {
+                        col->collapsed = !col->collapsed;
+                        ecs_set_id(world, selected_child, W_CollapsibleID,
+                                   sizeof(W_Collapsible), col);
+                    }
+                }
             }
         }
     }
@@ -233,6 +245,7 @@ void widgets_focus_system_register(void) {
     W_NavigationScope_ensure();
     W_Selectable_ensure();
     W_InteractState_ensure();
+    W_Collapsible_ensure();
 
     cels_entity_t components[] = { W_FocusableID };
     cels_system_declare("W_FocusSystem", CELS_Phase_OnUpdate,
