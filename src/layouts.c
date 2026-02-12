@@ -812,6 +812,91 @@ void w_table_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 /* ============================================================================
+ * Structural Container Layouts
+ * ============================================================================ */
+
+void w_collapsible_layout(struct ecs_world_t* world, cels_entity_t self) {
+    const W_Collapsible* d = (const W_Collapsible*)ecs_get_id(world, self, W_Collapsible_ensure());
+    if (!d) return;
+    const Widget_Theme* t = Widget_get_theme();
+    const Widget_CollapsibleStyle* s = d->style;
+
+    /* Read W_InteractState and W_Selectable for focus/selection visual feedback */
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    bool disabled = ist ? ist->disabled : false;
+    bool focused = ist ? ist->focused : false;
+
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    bool selected = sel ? sel->selected : false;
+
+    /* Resolve title row visual from theme + style + state */
+    W_ResolvedVisual v = w_resolve_visual(t,
+        s ? s->bg : CEL_COLOR_NONE,
+        s ? s->fg : CEL_COLOR_NONE,
+        s ? s->text_attr : (CEL_TextAttr){0},
+        s ? s->border_color : CEL_COLOR_NONE,
+        s ? s->border : CEL_BORDER_DEFAULT,
+        CEL_BORDER_NONE,
+        selected, focused, disabled);
+
+    /* Indicator and title colors from style or theme */
+    CEL_Color indicator_fg = (s && s->indicator_color.a > 0) ? s->indicator_color : t->primary.color;
+    CEL_Color title_fg = (s && s->title_color.a > 0) ? s->title_color : t->content_title.color;
+
+    /* Indentation: indent * 2 cells */
+    int left_pad = d->indent * 2;
+
+    /* Unicode triangle indicators (UTF-8 encoded) */
+    const char* indicator = d->collapsed
+        ? "\xe2\x96\xb6 "   /* right-pointing triangle (collapsed) */
+        : "\xe2\x96\xbc ";  /* down-pointing triangle (expanded) */
+
+    /* Outer container: TOP_TO_BOTTOM, GROW width, FIT height */
+    CEL_Clay(
+        .layout = {
+            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIT(0) }
+        }
+    ) {
+        /* Title row: LEFT_TO_RIGHT, GROW width, FIXED(1) height */
+        CEL_Clay(
+            .layout = {
+                .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) },
+                .padding = { .left = (uint16_t)left_pad },
+                .childGap = 0
+            },
+            .backgroundColor = v.bg
+        ) {
+            /* Indicator */
+            CLAY_TEXT(CEL_Clay_Text(indicator, (int)strlen(indicator)),
+                CLAY_TEXT_CONFIG({ .textColor = indicator_fg,
+                                  .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+
+            /* Title text */
+            if (d->title) {
+                CLAY_TEXT(CEL_Clay_Text(d->title, (int)strlen(d->title)),
+                    CLAY_TEXT_CONFIG({ .textColor = title_fg,
+                                      .userData = w_pack_text_attr(v.text_attr) }));
+            }
+        }
+
+        /* Content section: only emit children when expanded */
+        if (!d->collapsed) {
+            CEL_Clay(
+                .layout = {
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIT(0) },
+                    .childGap = 0
+                }
+            ) {
+                CEL_Clay_Children();
+            }
+        }
+    }
+}
+
+/* ============================================================================
  * Radio Layouts
  * ============================================================================ */
 

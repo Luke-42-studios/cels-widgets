@@ -165,6 +165,14 @@ CEL_Define(W_Table, {
     const Widget_TableStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
+/* Collapsible: expandable/collapsible content section with title */
+CEL_Define(W_Collapsible, {
+    const char* title;      /* Section title text */
+    bool collapsed;         /* true = children hidden, false = expanded */
+    int indent;             /* Nesting depth for indentation (0 = top level) */
+    const Widget_CollapsibleStyle* style; /* Visual overrides (NULL = defaults) */
+});
+
 /* ============================================================================
  * Radio Components
  * ============================================================================ */

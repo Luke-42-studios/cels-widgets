@@ -264,6 +264,13 @@ typedef struct Widget_TableStyle {
     W_STYLE_COMMON_FIELDS
 } Widget_TableStyle;
 
+/* Collapsible style */
+typedef struct Widget_CollapsibleStyle {
+    W_STYLE_COMMON_FIELDS
+    CEL_Color indicator_color; /* {0} = theme primary */
+    CEL_Color title_color;     /* {0} = theme content_title */
+} Widget_CollapsibleStyle;
+
 /* RadioButton style */
 typedef struct Widget_RadioButtonStyle {
     W_STYLE_COMMON_FIELDS
