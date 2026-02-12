@@ -96,7 +96,7 @@ static const Widget_Theme WIDGET_THEME_DARK = {
     /* Surface */
     .surface        = _W_V( 30,  33,  45),
     .surface_alt    = _W_V( 20,  22,  35),
-    .surface_raised = _W_V( 25,  28,  38),
+    .surface_raised = _W_V( 50,  54,  65),
 
     /* Primary — cyan accent */
     .primary         = _W_VB(100, 210, 220),

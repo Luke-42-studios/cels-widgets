@@ -29,6 +29,7 @@
 #include <cels-widgets/theme.h>
 #include <cels-widgets/style.h>
 #include <cels-clay/clay_layout.h>
+#include <cels-clay/clay_render.h>
 #include <clay.h>
 #include <flecs.h>
 #include <stdio.h>
@@ -40,6 +41,20 @@
 
 static const Widget_Theme* s_active_theme = NULL;
 static bool s_theme_dirty = false;
+
+/* Shared ring buffer for border decoration data (Panel, Canvas, InfoBox,
+ * Popup, Modal, Window). Each bordered layout call allocates one slot,
+ * valid for the current frame. 128 slots handles all bordered widgets.
+ * Wraps safely since render happens after all layouts. */
+#define W_BORDER_DECOR_MAX 128
+static CelClayBorderDecor g_border_decors[W_BORDER_DECOR_MAX];
+static int g_border_decor_idx = 0;
+
+static CelClayBorderDecor* _alloc_border_decor(void) {
+    CelClayBorderDecor* d = &g_border_decors[g_border_decor_idx % W_BORDER_DECOR_MAX];
+    g_border_decor_idx++;
+    return d;
+}
 
 const Widget_Theme* Widget_get_theme(void) {
     return s_active_theme ? s_active_theme : &Widget_THEME_DEFAULT;
@@ -117,7 +132,6 @@ void w_hint_layout(struct ecs_world_t* world, cels_entity_t self) {
     CEL_Clay(
         .layout = {
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) },
-            .padding = { .top = 1 },
             .childAlignment = { .x = CLAY_ALIGN_X_CENTER }
         }
     ) {
@@ -153,23 +167,26 @@ void w_canvas_layout(struct ecs_world_t* world, cels_entity_t self) {
     CEL_Color title_fg = t->primary.color;
     CEL_TextAttr title_attr = t->primary.attr;
 
+    CelClayBorderDecor* decor = _alloc_border_decor();
+    *decor = (CelClayBorderDecor){
+        .title = d->title,
+        .border_color = bdr_color,
+        .title_color = title_fg,
+        .bg_color = bg_color,
+        .border_style = 0,
+        .title_text_attr = (uintptr_t)w_pack_text_attr(title_attr)
+    };
+
     CEL_Clay(
         .layout = {
             .sizing = { .width = w_sizing, .height = h_sizing },
+            .padding = { .left = 1, .right = 1, .top = 1, .bottom = 1 },
             .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
         },
-        .border = {
-            .color = bdr_color,
-            .width = CLAY_BORDER_OUTSIDE(1)
-        },
         .backgroundColor = bg_color,
-        .cornerRadius = { .topLeft = 1, .topRight = 1 }
+        .userData = decor
     ) {
-        if (d->title) {
-            CLAY_TEXT(CEL_Clay_Text(d->title, (int)strlen(d->title)),
-                CLAY_TEXT_CONFIG({ .textColor = title_fg,
-                                  .userData = w_pack_text_attr(title_attr) }));
-        }
+        /* Title rendered by renderer on the border line */
     }
 }
 
@@ -189,25 +206,26 @@ void w_info_box_layout(struct ecs_world_t* world, cels_entity_t self) {
         ? s->text_attr : t->content.attr;
 
     if (d->border) {
+        CelClayBorderDecor* decor = _alloc_border_decor();
+        *decor = (CelClayBorderDecor){
+            .title = d->title,
+            .border_color = bdr_color,
+            .title_color = title_fg,
+            .bg_color = bg_color,
+            .border_style = 0,
+            .title_text_attr = (uintptr_t)w_pack_text_attr(title_attr)
+        };
+
         CEL_Clay(
             .layout = {
                 .layoutDirection = CLAY_LEFT_TO_RIGHT,
                 .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(3) },
-                .padding = CLAY_PADDING_ALL(1),
+                .padding = { .left = 1, .right = 1, .top = 1, .bottom = 1 },
                 .childGap = 1
             },
-            .border = {
-                .color = bdr_color,
-                .width = CLAY_BORDER_OUTSIDE(1)
-            },
             .backgroundColor = bg_color,
-            .cornerRadius = { .topLeft = 1, .topRight = 1 }
+            .userData = decor
         ) {
-            if (d->title) {
-                CLAY_TEXT(CEL_Clay_Text(d->title, (int)strlen(d->title)),
-                    CLAY_TEXT_CONFIG({ .textColor = title_fg,
-                                      .userData = w_pack_text_attr(title_attr) }));
-            }
             if (d->content) {
                 CLAY_TEXT(CEL_Clay_Text(d->content, (int)strlen(d->content)),
                     CLAY_TEXT_CONFIG({ .textColor = content_fg,
@@ -309,11 +327,16 @@ void w_text_area_layout(struct ecs_world_t* world, cels_entity_t self) {
                                   .userData = w_pack_text_attr(text_attr) }));
         }
     } else {
+        bool needs_clip = (d->max_height > 0);
         CEL_Clay(
             .layout = {
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .sizing = { .width = w_sizing, .height = h_sizing },
                 .padding = CLAY_PADDING_ALL(1)
+            },
+            .clip = {
+                .vertical = needs_clip,
+                .childOffset = {0}
             }
         ) {
             CLAY_TEXT(CEL_Clay_Text(d->text, (int)strlen(d->text)),
@@ -700,8 +723,10 @@ void w_panel_layout(struct ecs_world_t* world, cels_entity_t self) {
         ? Widget_resolve_sizing(s->height, CLAY_SIZING_GROW(0))
         : CLAY_SIZING_GROW(0);
 
-    /* Padding: style override or ALL(1) */
-    Clay_Padding pad = CLAY_PADDING_ALL(1);
+    /* Padding: horizontal=1 (2 cells, border overlays outermost → 1 cell gap),
+     *          vertical=2 (border on row 0/last, 1 row gap to content).
+     * Style override replaces entirely. */
+    Clay_Padding pad = { .left = 1, .right = 1, .top = 2, .bottom = 2 };
     if (s && (s->padding.left || s->padding.right || s->padding.top || s->padding.bottom)) {
         pad = (Clay_Padding){ .left = s->padding.left, .right = s->padding.right,
                               .top = s->padding.top, .bottom = s->padding.bottom };
@@ -713,13 +738,24 @@ void w_panel_layout(struct ecs_world_t* world, cels_entity_t self) {
     CEL_Color title_fg = t->primary.color;
     CEL_TextAttr title_attr = t->primary.attr;
 
-    /* Border: style override or always-on */
-    Clay_BorderWidth border_w = CLAY_BORDER_OUTSIDE(1);
+    /* Border mode: DEFAULT/ALWAYS show border, NONE hides it */
     CEL_BorderMode border_mode = s ? s->border : CEL_BORDER_DEFAULT;
-    if (border_mode == CEL_BORDER_NONE) {
-        border_w = (Clay_BorderWidth){0};
+
+    /* Build border decoration for renderer (bypasses Clay's uint16_t border
+     * which AR-scales to 2+ cells wide). The renderer draws 1-cell-wide
+     * box-drawing characters directly via tui_draw_border. */
+    CelClayBorderDecor* decor = NULL;
+    if (border_mode != CEL_BORDER_NONE) {
+        decor = _alloc_border_decor();
+        *decor = (CelClayBorderDecor){
+            .title = (d && d->title) ? d->title : NULL,
+            .border_color = bdr_color,
+            .title_color = title_fg,
+            .bg_color = bg_color,
+            .border_style = 0, /* rounded (default for Panels) */
+            .title_text_attr = (uintptr_t)w_pack_text_attr(title_attr)
+        };
     }
-    /* CEL_BORDER_DEFAULT and CEL_BORDER_ALWAYS both show border (panel default) */
 
     CEL_Clay(
         .layout = {
@@ -729,17 +765,9 @@ void w_panel_layout(struct ecs_world_t* world, cels_entity_t self) {
             .childGap = 1
         },
         .backgroundColor = bg_color,
-        .border = {
-            .color = bdr_color,
-            .width = border_w
-        },
-        .cornerRadius = { .topLeft = 1, .topRight = 1 }
+        .userData = decor
     ) {
-        if (d && d->title) {
-            CLAY_TEXT(CEL_Clay_Text(d->title, (int)strlen(d->title)),
-                CLAY_TEXT_CONFIG({ .textColor = title_fg,
-                                  .userData = w_pack_text_attr(title_attr) }));
-        }
+        /* Title rendered by renderer on the border line (not as Clay content) */
         CEL_Clay_Children();
     }
 }
@@ -1258,18 +1286,25 @@ void w_popup_layout(struct ecs_world_t* world, cels_entity_t self) {
     }
 
     /* Popup container: centered floating element */
+    CelClayBorderDecor* decor = _alloc_border_decor();
+    *decor = (CelClayBorderDecor){
+        .title = d->title,
+        .border_color = bdr_color,
+        .title_color = title_fg,
+        .bg_color = bg_color,
+        .border_style = 0,
+        .title_text_attr = (uintptr_t)w_pack_text_attr(title_attr)
+    };
+
     CEL_Clay(
         .layout = {
             .layoutDirection = CLAY_TOP_TO_BOTTOM,
             .sizing = { .width = CLAY_SIZING_FIXED(w_px), .height = h_axis },
-            .padding = CLAY_PADDING_ALL(1),
+            .padding = { .left = 1, .right = 1, .top = 2, .bottom = 2 },
             .childGap = 1
         },
         .backgroundColor = bg_color,
-        .border = {
-            .color = bdr_color,
-            .width = CLAY_BORDER_OUTSIDE(1)
-        },
+        .userData = decor,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {
@@ -1280,11 +1315,6 @@ void w_popup_layout(struct ecs_world_t* world, cels_entity_t self) {
             .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_PASSTHROUGH
         }
     ) {
-        if (d->title) {
-            CLAY_TEXT(CEL_Clay_Text(d->title, (int)strlen(d->title)),
-                CLAY_TEXT_CONFIG({ .textColor = title_fg,
-                                  .userData = w_pack_text_attr(title_attr) }));
-        }
         CEL_Clay_Children();
     }
 }
@@ -1328,18 +1358,25 @@ void w_modal_layout(struct ecs_world_t* world, cels_entity_t self) {
     ) {}
 
     /* Modal container: centered floating element at higher z-band than popup */
+    CelClayBorderDecor* decor = _alloc_border_decor();
+    *decor = (CelClayBorderDecor){
+        .title = d->title,
+        .border_color = bdr_color,
+        .title_color = title_fg,
+        .bg_color = bg_color,
+        .border_style = 0,
+        .title_text_attr = (uintptr_t)w_pack_text_attr(title_attr)
+    };
+
     CEL_Clay(
         .layout = {
             .layoutDirection = CLAY_TOP_TO_BOTTOM,
             .sizing = { .width = CLAY_SIZING_FIXED(w_px), .height = h_axis },
-            .padding = CLAY_PADDING_ALL(1),
+            .padding = { .left = 1, .right = 1, .top = 2, .bottom = 2 },
             .childGap = 1
         },
         .backgroundColor = bg_color,
-        .border = {
-            .color = bdr_color,
-            .width = CLAY_BORDER_OUTSIDE(1)
-        },
+        .userData = decor,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {
@@ -1350,11 +1387,6 @@ void w_modal_layout(struct ecs_world_t* world, cels_entity_t self) {
             .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_PASSTHROUGH
         }
     ) {
-        if (d->title) {
-            CLAY_TEXT(CEL_Clay_Text(d->title, (int)strlen(d->title)),
-                CLAY_TEXT_CONFIG({ .textColor = title_fg,
-                                  .userData = w_pack_text_attr(title_attr) }));
-        }
         CEL_Clay_Children();
     }
 }
@@ -1401,17 +1433,28 @@ void w_window_layout(struct ecs_world_t* world, cels_entity_t self) {
 
     int z = 150 + d->z_order;
 
-    /* Window container: floating element */
+    /* Window container: floating element with renderer-drawn border */
+    CelClayBorderDecor* decor = _alloc_border_decor();
+    *decor = (CelClayBorderDecor){
+        .title = d->title,
+        .right_text = d->on_close ? "[X]" : NULL,
+        .border_color = bdr_color,
+        .title_color = title_fg,
+        .right_color = close_fg,
+        .bg_color = bg_color,
+        .border_style = 1, /* single (sharper look for windows) */
+        .title_text_attr = (uintptr_t)w_pack_text_attr(title_attr)
+    };
+
     CEL_Clay(
         .layout = {
             .layoutDirection = CLAY_TOP_TO_BOTTOM,
-            .sizing = { .width = CLAY_SIZING_FIXED(w_px), .height = h_axis }
+            .sizing = { .width = CLAY_SIZING_FIXED(w_px), .height = h_axis },
+            .padding = { .left = 1, .right = 1, .top = 2, .bottom = 2 },
+            .childGap = 1
         },
         .backgroundColor = bg_color,
-        .border = {
-            .color = bdr_color,
-            .width = CLAY_BORDER_OUTSIDE(1)
-        },
+        .userData = decor,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = attach,
@@ -1420,52 +1463,7 @@ void w_window_layout(struct ecs_world_t* world, cels_entity_t self) {
             .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_PASSTHROUGH
         }
     ) {
-        /* Title bar row: title left, [X] right */
-        CEL_Clay(
-            .layout = {
-                .layoutDirection = CLAY_LEFT_TO_RIGHT,
-                .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) },
-                .padding = { .left = 1, .right = 1 },
-                .childAlignment = { .x = CLAY_ALIGN_X_LEFT }
-            },
-            .border = {
-                .color = bdr_color,
-                .width = { .bottom = 1 }
-            }
-        ) {
-            /* Title text: [ Title ] */
-            if (d->title) {
-                char title_buf[64];
-                int title_len = snprintf(title_buf, sizeof(title_buf), "[ %s ]", d->title);
-                CLAY_TEXT(CEL_Clay_Text(title_buf, title_len),
-                    CLAY_TEXT_CONFIG({ .textColor = title_fg,
-                                      .userData = w_pack_text_attr(title_attr) }));
-            }
-
-            /* Spacer pushes [X] to the right */
-            CEL_Clay(
-                .layout = { .sizing = { .width = CLAY_SIZING_GROW(0) } }
-            ) {}
-
-            /* Close indicator [X] */
-            if (d->on_close) {
-                CLAY_TEXT(CLAY_STRING("[X]"),
-                    CLAY_TEXT_CONFIG({ .textColor = close_fg,
-                                      .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
-            }
-        }
-
-        /* Content area */
-        CEL_Clay(
-            .layout = {
-                .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
-                .padding = CLAY_PADDING_ALL(1),
-                .childGap = 1
-            }
-        ) {
-            CEL_Clay_Children();
-        }
+        CEL_Clay_Children();
     }
 }
 
@@ -1696,17 +1694,21 @@ void w_scrollable_layout(struct ecs_world_t* world, cels_entity_t self) {
     CEL_Color track_color = (s && s->track_color.a > 0) ? s->track_color : t->surface_alt.color;
     CEL_Color thumb_color = (s && s->thumb_color.a > 0) ? s->thumb_color : t->content_muted.color;
 
-    /* Outer container: horizontal (content viewport | scrollbar gutter) */
+    /* Outer container: horizontal (content viewport | scrollbar gutter)
+     * GROW height so the scrollable fills whatever space its parent provides,
+     * rather than requiring an exact pixel match with vp_height. */
     CEL_Clay(
         .layout = {
             .layoutDirection = CLAY_LEFT_TO_RIGHT,
             .sizing = {
                 .width = CLAY_SIZING_GROW(0),
-                .height = CLAY_SIZING_FIXED((float)vp_height)
+                .height = CLAY_SIZING_GROW(0)
             }
         }
     ) {
-        /* Content viewport with vertical clipping */
+        /* Content viewport — virtual rendering: only lay out visible children.
+         * When total > visible, skip Clay element creation for off-screen items.
+         * Clip offset is 0 because we only render the visible slice. */
         CEL_Clay(
             .layout = {
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
@@ -1717,11 +1719,15 @@ void w_scrollable_layout(struct ecs_world_t* world, cels_entity_t self) {
             },
             .clip = {
                 .vertical = true,
-                .childOffset = { .x = 0, .y = -(float)offset }
+                .childOffset = { .x = 0, .y = needs_scrollbar ? 0 : -(float)offset }
             },
             .backgroundColor = bg_color
         ) {
-            CEL_Clay_Children();
+            if (needs_scrollbar) {
+                CEL_Clay_ChildrenRange(offset, visible);
+            } else {
+                CEL_Clay_Children();
+            }
         }
 
         /* Scrollbar gutter (only when content overflows) */
@@ -1734,12 +1740,13 @@ void w_scrollable_layout(struct ecs_world_t* world, cels_entity_t self) {
             int track_below = track_h - thumb_y - thumb_h;
             if (track_below < 0) track_below = 0;
 
-            /* 1-cell wide gutter column */
+            /* 1-terminal-cell wide gutter column (divide by aspect ratio) */
+            float cell_w = 1.0f / CEL_CELL_ASPECT_RATIO;
             CEL_Clay(
                 .layout = {
                     .layoutDirection = CLAY_TOP_TO_BOTTOM,
                     .sizing = {
-                        .width = CLAY_SIZING_FIXED(1),
+                        .width = CLAY_SIZING_FIXED(cell_w),
                         .height = CLAY_SIZING_GROW(0)
                     }
                 }
@@ -1748,7 +1755,7 @@ void w_scrollable_layout(struct ecs_world_t* world, cels_entity_t self) {
                 if (thumb_y > 0) {
                     CEL_Clay(
                         .layout = { .sizing = {
-                            .width = CLAY_SIZING_FIXED(1),
+                            .width = CLAY_SIZING_FIXED(cell_w),
                             .height = CLAY_SIZING_FIXED((float)thumb_y)
                         }},
                         .backgroundColor = track_color
@@ -1757,7 +1764,7 @@ void w_scrollable_layout(struct ecs_world_t* world, cels_entity_t self) {
                 /* Thumb */
                 CEL_Clay(
                     .layout = { .sizing = {
-                        .width = CLAY_SIZING_FIXED(1),
+                        .width = CLAY_SIZING_FIXED(cell_w),
                         .height = CLAY_SIZING_FIXED((float)thumb_h)
                     }},
                     .backgroundColor = thumb_color
@@ -1766,7 +1773,7 @@ void w_scrollable_layout(struct ecs_world_t* world, cels_entity_t self) {
                 if (track_below > 0) {
                     CEL_Clay(
                         .layout = { .sizing = {
-                            .width = CLAY_SIZING_FIXED(1),
+                            .width = CLAY_SIZING_FIXED(cell_w),
                             .height = CLAY_SIZING_FIXED((float)track_below)
                         }},
                         .backgroundColor = track_color

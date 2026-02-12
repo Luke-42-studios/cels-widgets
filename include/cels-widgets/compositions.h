@@ -175,11 +175,11 @@ CEL_Composition(WTable, int row_count; const char** keys; const char** values;
 #define Widget_Table(...) CEL_Init(WTable, __VA_ARGS__)
 
 CEL_Composition(WCollapsible, const char* title; bool collapsed; int indent;
-                 const Widget_CollapsibleStyle* style;) {
+                 bool selected; const Widget_CollapsibleStyle* style;) {
     CEL_Has(ClayUI, .layout_fn = w_collapsible_layout);
     CEL_Has(W_Collapsible, .title = props.title, .collapsed = props.collapsed,
             .indent = props.indent, .style = props.style);
-    CEL_Has(W_Selectable, .selected = false);
+    CEL_Has(W_Selectable, .selected = props.selected);
     CEL_Has(W_InteractState);
     CEL_Has(W_Focusable);
 }
@@ -193,11 +193,11 @@ CEL_Composition(WSplitPane, float ratio; int direction;
 }
 #define Widget_Split(...) CEL_Init(WSplitPane, __VA_ARGS__)
 
-CEL_Composition(WScrollContainer, int height; int total_count;
+CEL_Composition(WScrollContainer, int height; int total_count; int scroll_offset;
                  const Widget_ScrollableStyle* style;) {
     CEL_Has(ClayUI, .layout_fn = w_scrollable_layout);
     CEL_Has(W_ScrollContainer, .height = props.height, .style = props.style);
-    CEL_Has(W_Scrollable, .scroll_offset = 0,
+    CEL_Has(W_Scrollable, .scroll_offset = props.scroll_offset,
             .total_count = props.total_count,
             .visible_count = props.height);
 }
