@@ -318,6 +318,62 @@ CEL_Define(W_Scrollable, {
 });
 
 /* ============================================================================
+ * Overlay Components
+ * ============================================================================ */
+
+/* OverlayState: marks an entity as an overlay with z-ordering and visibility.
+ * Used by Widget_Popup, Widget_Modal, Widget_Window, Widget_Toast. */
+CEL_Define(W_OverlayState, {
+    bool visible;       /* Whether the overlay is currently shown */
+    int z_index;        /* z-ordering value (higher = on top) */
+    bool modal;         /* true = focus-isolating overlay */
+});
+
+/* Toast: auto-dismissing notification overlay */
+CEL_Define(W_Toast, {
+    const char* message;    /* Toast message text */
+    float duration;         /* Auto-dismiss after N seconds (default 3.0) */
+    float elapsed;          /* Time since toast appeared */
+    int severity;           /* 0=info, 1=success, 2=warning, 3=error */
+    int position;           /* 0=bottom-right, 1=bottom-center, 2=top-right, 3=top-center */
+    bool dismissed;         /* true = should not render */
+    const Widget_ToastStyle* style; /* Visual overrides (NULL = defaults) */
+});
+
+/* Popup: centered floating overlay container */
+CEL_Define(W_Popup, {
+    const char* title;      /* Optional popup title */
+    bool visible;           /* Display state */
+    bool backdrop;          /* Show dimming backdrop behind popup */
+    int width;              /* Popup width (0 = 40 default) */
+    int height;             /* Popup height (0 = fit) */
+    const Widget_PopupStyle* style; /* Visual overrides (NULL = defaults) */
+});
+
+/* Modal: popup with focus scope isolation + Escape dismiss */
+CEL_Define(W_Modal, {
+    const char* title;      /* Modal title */
+    bool visible;           /* Display state */
+    int width;              /* Modal width (0 = 50 default) */
+    int height;             /* Modal height (0 = fit) */
+    void (*on_dismiss)(void); /* Callback when Escape pressed */
+    const Widget_ModalStyle* style; /* Visual overrides (NULL = defaults) */
+});
+
+/* Window: positioned floating panel with title bar and close */
+CEL_Define(W_Window, {
+    const char* title;      /* Window title (shown in title bar) */
+    bool visible;           /* Display state */
+    int x;                  /* Position X (0 = centered) */
+    int y;                  /* Position Y (0 = centered) */
+    int width;              /* Window width */
+    int height;             /* Window height */
+    int z_order;            /* Dynamic z-index for multi-window management */
+    void (*on_close)(void); /* Callback when close triggered */
+    const Widget_WindowStyle* style; /* Visual overrides (NULL = defaults) */
+});
+
+/* ============================================================================
  * Module API
  * ============================================================================ */
 

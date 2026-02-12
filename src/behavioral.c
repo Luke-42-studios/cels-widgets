@@ -8,6 +8,7 @@
  *   W_RangeClampF   - Clamps W_RangeValueF.value to [min, max] at PostUpdate
  *   W_RangeClampI   - Clamps W_RangeValueI.value to [min, max] at PostUpdate
  *   W_ScrollClamp   - Clamps W_Scrollable.scroll_offset to valid range at PostUpdate
+ *   W_ToastTimer    - Auto-dismiss timer for W_Toast notifications at PostUpdate
  */
 
 #include <cels-widgets/widgets.h>
@@ -49,6 +50,21 @@ static void scroll_clamp_run(CELS_Iter* it) {
     }
 }
 
+/* W_ToastTimer: auto-dismiss timer for toast notifications */
+static void toast_timer_run(CELS_Iter* it) {
+    int count = cels_iter_count(it);
+    W_Toast* toasts = (W_Toast*)cels_iter_column(it, W_ToastID, sizeof(W_Toast));
+    float dt = cels_iter_delta_time(it);
+    if (!toasts) return;
+    for (int i = 0; i < count; i++) {
+        if (toasts[i].dismissed) continue;
+        toasts[i].elapsed += dt;
+        if (toasts[i].elapsed >= toasts[i].duration) {
+            toasts[i].dismissed = true;
+        }
+    }
+}
+
 /* ============================================================================
  * Registration
  * ============================================================================ */
@@ -62,6 +78,7 @@ void widgets_behavioral_systems_register(void) {
     W_RangeValueF_ensure();
     W_RangeValueI_ensure();
     W_Scrollable_ensure();
+    W_Toast_ensure();
 
     cels_entity_t range_f_comps[] = { W_RangeValueFID };
     cels_system_declare("W_RangeClampF", CELS_Phase_PostUpdate,
@@ -74,4 +91,8 @@ void widgets_behavioral_systems_register(void) {
     cels_entity_t scroll_comps[] = { W_ScrollableID };
     cels_system_declare("W_ScrollClamp", CELS_Phase_PostUpdate,
                         scroll_clamp_run, scroll_comps, 1);
+
+    cels_entity_t toast_comps[] = { W_ToastID };
+    cels_system_declare("W_ToastTimer", CELS_Phase_PostUpdate,
+                        toast_timer_run, toast_comps, 1);
 }

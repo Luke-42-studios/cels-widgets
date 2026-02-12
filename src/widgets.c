@@ -53,6 +53,13 @@ CEL_Module(Widgets) {
     W_Scrollable_ensure();
     W_NavigationScope_ensure();
 
+    /* Overlay components */
+    W_OverlayState_ensure();
+    W_Toast_ensure();
+    W_Popup_ensure();
+    W_Modal_ensure();
+    W_Window_ensure();
+
     /* Register focus system */
     widgets_focus_system_register();
 

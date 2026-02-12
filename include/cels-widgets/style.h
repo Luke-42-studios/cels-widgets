@@ -320,6 +320,32 @@ typedef struct Widget_ListItemStyle {
     W_STYLE_COMMON_FIELDS
 } Widget_ListItemStyle;
 
+/* Toast style */
+typedef struct Widget_ToastStyle {
+    W_STYLE_COMMON_FIELDS
+} Widget_ToastStyle;
+
+/* Popup style */
+typedef struct Widget_PopupStyle {
+    W_STYLE_COMMON_FIELDS
+    CEL_Sizing      width;        /* Default: FIXED(40) */
+    CEL_Sizing      height;       /* Default: FIT */
+} Widget_PopupStyle;
+
+/* Modal style */
+typedef struct Widget_ModalStyle {
+    W_STYLE_COMMON_FIELDS
+    CEL_Sizing      width;        /* Default: FIXED(50) */
+    CEL_Sizing      height;       /* Default: FIT */
+} Widget_ModalStyle;
+
+/* Window style */
+typedef struct Widget_WindowStyle {
+    W_STYLE_COMMON_FIELDS
+    CEL_Color       title_bg;     /* {0} = theme primary */
+    CEL_Color       title_fg;     /* {0} = theme primary_content */
+} Widget_WindowStyle;
+
 /* ============================================================================
  * Helpers -- resolve style overrides with fallbacks
  *
