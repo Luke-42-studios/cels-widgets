@@ -180,6 +180,12 @@ CEL_Define(W_SplitPane, {
     const Widget_SplitStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
+/* ScrollContainer: generic scrollable viewport with scrollbar gutter */
+CEL_Define(W_ScrollContainer, {
+    int height;             /* Viewport height in rows (required, determines visible_count) */
+    const Widget_ScrollableStyle* style; /* Visual overrides (NULL = defaults) */
+});
+
 /* ============================================================================
  * Radio Components
  * ============================================================================ */

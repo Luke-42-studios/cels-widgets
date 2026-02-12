@@ -277,6 +277,13 @@ typedef struct Widget_SplitStyle {
     CEL_Color divider_color; /* {0} = theme divider */
 } Widget_SplitStyle;
 
+/* Scrollable container style */
+typedef struct Widget_ScrollableStyle {
+    W_STYLE_COMMON_FIELDS
+    CEL_Color track_color;   /* {0} = theme surface_alt (scrollbar track) */
+    CEL_Color thumb_color;   /* {0} = theme content_muted (scrollbar thumb) */
+} Widget_ScrollableStyle;
+
 /* RadioButton style */
 typedef struct Widget_RadioButtonStyle {
     W_STYLE_COMMON_FIELDS

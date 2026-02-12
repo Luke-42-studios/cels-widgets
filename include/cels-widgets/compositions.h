@@ -193,6 +193,16 @@ CEL_Composition(WSplitPane, float ratio; int direction;
 }
 #define Widget_Split(...) CEL_Init(WSplitPane, __VA_ARGS__)
 
+CEL_Composition(WScrollContainer, int height; int total_count;
+                 const Widget_ScrollableStyle* style;) {
+    CEL_Has(ClayUI, .layout_fn = w_scrollable_layout);
+    CEL_Has(W_ScrollContainer, .height = props.height, .style = props.style);
+    CEL_Has(W_Scrollable, .scroll_offset = 0,
+            .total_count = props.total_count,
+            .visible_count = props.height);
+}
+#define Widget_Scrollable(...) CEL_Init(WScrollContainer, __VA_ARGS__)
+
 /* ============================================================================
  * Radio Compositions
  * ============================================================================ */
@@ -305,5 +315,6 @@ CEL_Composition(WNavigationGroup,
 #define WListItem(...)    Widget_ListItem(__VA_ARGS__)
 #define WCollapsible(...) Widget_Collapsible(__VA_ARGS__)
 #define WSplitPane(...)   Widget_Split(__VA_ARGS__)
+#define WScrollContainer(...) Widget_Scrollable(__VA_ARGS__)
 
 #endif /* CELS_WIDGETS_COMPOSITIONS_H */

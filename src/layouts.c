@@ -1302,3 +1302,110 @@ void w_split_pane_layout(struct ecs_world_t* world, cels_entity_t self) {
         }
     }
 }
+
+/* ============================================================================
+ * Scrollable Container Layout
+ * ============================================================================ */
+
+void w_scrollable_layout(struct ecs_world_t* world, cels_entity_t self) {
+    const W_ScrollContainer* d = (const W_ScrollContainer*)ecs_get_id(
+        world, self, W_ScrollContainer_ensure());
+    const Widget_Theme* t = Widget_get_theme();
+    const Widget_ScrollableStyle* s = (d ? d->style : NULL);
+
+    /* Read scroll state from behavioral component */
+    const W_Scrollable* scr = (const W_Scrollable*)ecs_get_id(
+        world, self, W_Scrollable_ensure());
+    int offset = scr ? scr->scroll_offset : 0;
+    int total = scr ? scr->total_count : 0;
+    int visible = scr ? scr->visible_count : 0;
+    bool needs_scrollbar = total > visible && visible > 0;
+
+    /* Viewport height from component (developer-provided) */
+    int vp_height = (d && d->height > 0) ? d->height : 10;
+
+    /* Colors */
+    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface.color;
+    CEL_Color track_color = (s && s->track_color.a > 0) ? s->track_color : t->surface_alt.color;
+    CEL_Color thumb_color = (s && s->thumb_color.a > 0) ? s->thumb_color : t->content_muted.color;
+
+    /* Outer container: horizontal (content viewport | scrollbar gutter) */
+    CEL_Clay(
+        .layout = {
+            .layoutDirection = CLAY_LEFT_TO_RIGHT,
+            .sizing = {
+                .width = CLAY_SIZING_GROW(0),
+                .height = CLAY_SIZING_FIXED((float)vp_height)
+            }
+        }
+    ) {
+        /* Content viewport with vertical clipping */
+        CEL_Clay(
+            .layout = {
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                .sizing = {
+                    .width = CLAY_SIZING_GROW(0),
+                    .height = CLAY_SIZING_GROW(0)
+                }
+            },
+            .clip = {
+                .vertical = true,
+                .childOffset = { .x = 0, .y = -(float)offset }
+            },
+            .backgroundColor = bg_color
+        ) {
+            CEL_Clay_Children();
+        }
+
+        /* Scrollbar gutter (only when content overflows) */
+        if (needs_scrollbar) {
+            int track_h = vp_height;
+            int thumb_h = (visible * track_h) / total;
+            if (thumb_h < 1) thumb_h = 1;
+            int max_off = total - visible;
+            int thumb_y = (max_off > 0) ? (offset * (track_h - thumb_h)) / max_off : 0;
+            int track_below = track_h - thumb_y - thumb_h;
+            if (track_below < 0) track_below = 0;
+
+            /* 1-cell wide gutter column */
+            CEL_Clay(
+                .layout = {
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    .sizing = {
+                        .width = CLAY_SIZING_FIXED(1),
+                        .height = CLAY_SIZING_GROW(0)
+                    }
+                }
+            ) {
+                /* Track above thumb */
+                if (thumb_y > 0) {
+                    CEL_Clay(
+                        .layout = { .sizing = {
+                            .width = CLAY_SIZING_FIXED(1),
+                            .height = CLAY_SIZING_FIXED((float)thumb_y)
+                        }},
+                        .backgroundColor = track_color
+                    ) {}
+                }
+                /* Thumb */
+                CEL_Clay(
+                    .layout = { .sizing = {
+                        .width = CLAY_SIZING_FIXED(1),
+                        .height = CLAY_SIZING_FIXED((float)thumb_h)
+                    }},
+                    .backgroundColor = thumb_color
+                ) {}
+                /* Track below thumb */
+                if (track_below > 0) {
+                    CEL_Clay(
+                        .layout = { .sizing = {
+                            .width = CLAY_SIZING_FIXED(1),
+                            .height = CLAY_SIZING_FIXED((float)track_below)
+                        }},
+                        .backgroundColor = track_color
+                    ) {}
+                }
+            }
+        }
+    }
+}
