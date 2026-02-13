@@ -319,7 +319,7 @@ CEL_Composition(WModal, const char* title; bool visible; int width; int height;
 #define Widget_Modal(...) CEL_Init(WModal, __VA_ARGS__)
 
 CEL_Composition(WWindow, const char* title; bool visible; int x; int y;
-                 int width; int height; int z_order;
+                 int width; int height; int z_order; bool draggable;
                  void (*on_close)(void); const Widget_WindowStyle* style;) {
     CEL_Has(ClayUI, .layout_fn = w_window_layout);
     CEL_Has(W_Window, .title = props.title, .visible = props.visible,
@@ -332,6 +332,7 @@ CEL_Composition(WWindow, const char* title; bool visible; int x; int y;
             .z_index = 150 + props.z_order, .modal = true);
     CEL_Has(W_NavigationScope, .wrap = true, .direction = 0);
     CEL_Has(W_Focusable);
+    if (props.draggable) { CEL_Has(W_Draggable); }
 }
 #define Widget_Window(...) CEL_Init(WWindow, __VA_ARGS__)
 

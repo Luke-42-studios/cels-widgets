@@ -59,6 +59,7 @@ CEL_Module(Widgets) {
     W_Popup_ensure();
     W_Modal_ensure();
     W_Window_ensure();
+    W_Draggable_ensure();
 
     /* Register focus system */
     widgets_focus_system_register();

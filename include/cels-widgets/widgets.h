@@ -373,6 +373,13 @@ CEL_Define(W_Window, {
     const Widget_WindowStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
+/* Draggable: behavioral component enabling runtime window repositioning.
+ * Attach to a W_Window entity via .draggable=true on Widget_Window.
+ * 'm' toggles move mode, arrow keys reposition, Enter/Escape/m exits. */
+CEL_Define(W_Draggable, {
+    bool moving;            /* Currently in move mode */
+});
+
 /* ============================================================================
  * Module API
  * ============================================================================ */

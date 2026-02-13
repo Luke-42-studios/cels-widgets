@@ -645,6 +645,120 @@ static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) 
 }
 
 /* ============================================================================
+ * Window Dragging (move mode via 'm' key)
+ *
+ * When a draggable window is visible, 'm' toggles move mode. In move mode
+ * arrow keys reposition the window 1 cell per press (edge-detected).
+ * Enter/Escape/m exits move mode. Returns true when input was consumed,
+ * causing focus_system_run to skip process_navigation_groups.
+ * ============================================================================ */
+
+/* Drag state lives here (not in W_Draggable component) because compositions
+ * re-run CEL_Has(W_Draggable) each frame, which zero-inits the struct.
+ * The component is only a tag marking the entity as draggable; the actual
+ * moving flag persists in these statics across frames. We write back to
+ * the component each frame so layouts.c can read it for visual feedback. */
+static ecs_entity_t s_drag_target = 0;
+static bool s_drag_moving = false;
+
+static bool process_window_dragging(ecs_world_t* world, const CELS_Input* input) {
+    W_Draggable_ensure();
+    W_Window_ensure();
+
+    /* Query all entities that have BOTH W_Window and W_Draggable */
+    ecs_query_t* q = ecs_query(world, {
+        .terms = {{ .id = W_WindowID }, { .id = W_DraggableID }}
+    });
+    if (!q) return false;
+
+    /* Find the topmost visible draggable window */
+    ecs_entity_t target = 0;
+    int top_z = -1;
+    ecs_iter_t qit = ecs_query_iter(world, q);
+    while (ecs_query_next(&qit)) {
+        for (int e = 0; e < qit.count; e++) {
+            const W_Window* w = (const W_Window*)ecs_get_id(
+                world, qit.entities[e], W_WindowID);
+            if (w && w->visible && w->z_order > top_z) {
+                top_z = w->z_order;
+                target = qit.entities[e];
+            }
+        }
+    }
+    ecs_query_fini(q);
+
+    if (!target) {
+        s_drag_moving = false;
+        s_drag_target = 0;
+        return false;
+    }
+
+    /* Reset if target changed (different window became topmost) */
+    if (s_drag_target != target) {
+        s_drag_moving = false;
+        s_drag_target = target;
+    }
+
+    /* 'm' key edge-detected: toggle move mode */
+    bool m_pressed = (input->has_raw_key && input->raw_key == 'm' &&
+                      !(s_prev_input.has_raw_key && s_prev_input.raw_key == 'm'));
+    if (m_pressed) {
+        s_drag_moving = !s_drag_moving;
+        W_Draggable upd = { .moving = s_drag_moving };
+        ecs_set_id(world, target, W_DraggableID, sizeof(W_Draggable), &upd);
+        return s_drag_moving;
+    }
+
+    if (!s_drag_moving) return false;
+
+    /* Write moving=true for layout visual feedback (composition reset it) */
+    W_Draggable upd = { .moving = true };
+    ecs_set_id(world, target, W_DraggableID, sizeof(W_Draggable), &upd);
+
+    /* Exit move mode on Enter or Escape (edge-detected) */
+    bool exit_accept = (input->button_accept && !s_prev_input.button_accept);
+    bool exit_cancel = (input->button_cancel && !s_prev_input.button_cancel);
+    if (exit_accept || exit_cancel) {
+        s_drag_moving = false;
+        W_Draggable off = { .moving = false };
+        ecs_set_id(world, target, W_DraggableID, sizeof(W_Draggable), &off);
+        return true;
+    }
+
+    /* Arrow keys: move window 1 cell per press (edge-detected) */
+    W_Window* w = (W_Window*)ecs_get_mut_id(world, target, W_WindowID);
+    if (!w) return true;
+    bool moved = false;
+
+    if (input->axis_left[1] < -0.5f && s_prev_input.axis_left[1] >= -0.5f) { w->y--; moved = true; }
+    if (input->axis_left[1] >  0.5f && s_prev_input.axis_left[1] <=  0.5f) { w->y++; moved = true; }
+    if (input->axis_left[0] < -0.5f && s_prev_input.axis_left[0] >= -0.5f) { w->x--; moved = true; }
+    if (input->axis_left[0] >  0.5f && s_prev_input.axis_left[0] <=  0.5f) { w->x++; moved = true; }
+
+    /* Clamp to screen bounds using terminal dimensions */
+    CELS_Context* dctx = cels_get_context();
+    const CELS_Window* dwin = cels_window_get(dctx);
+    int term_w = (dwin && dwin->width > 0) ? dwin->width : 80;
+    int term_h = (dwin && dwin->height > 0) ? dwin->height : 24;
+    int win_w = (w->width > 0) ? w->width : 40;
+    int win_h = (w->height > 0) ? w->height : 10;
+
+    if (w->x < 1) w->x = 1;
+    if (w->y < 1) w->y = 1;
+    int max_x = term_w - win_w;
+    int max_y = term_h - win_h;
+    if (max_x < 1) max_x = 1;
+    if (max_y < 1) max_y = 1;
+    if (w->x > max_x) w->x = max_x;
+    if (w->y > max_y) w->y = max_y;
+
+    if (moved) {
+        ecs_set_id(world, target, W_WindowID, sizeof(W_Window), w);
+    }
+    return true;  /* In move mode — always consume input */
+}
+
+/* ============================================================================
  * Focus System Callback
  * ============================================================================ */
 
@@ -672,7 +786,10 @@ static void focus_system_run(CELS_Iter* it) {
     if (world) {
         process_modal_overlay(world, input);
         process_window_overlay(world, input);
-        process_navigation_groups(world, input);
+        bool dragging = process_window_dragging(world, input);
+        if (!dragging) {
+            process_navigation_groups(world, input);
+        }
         process_split_pane_navigation(world, input);
         process_scrollable_navigation(world, input);
     }
@@ -703,6 +820,7 @@ void widgets_focus_system_register(void) {
     W_Window_ensure();
     W_Modal_ensure();
     W_OverlayState_ensure();
+    W_Draggable_ensure();
 
     cels_entity_t components[] = { W_FocusableID };
     cels_system_declare("W_FocusSystem", CELS_Phase_OnUpdate,

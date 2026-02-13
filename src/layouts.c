@@ -162,7 +162,7 @@ void w_canvas_layout(struct ecs_world_t* world, cels_entity_t self) {
         ? Widget_resolve_sizing(s->height, CLAY_SIZING_FIXED(3))
         : CLAY_SIZING_FIXED(3);
 
-    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
+    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : (CEL_Color){0, 0, 0, 1};
     CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border.color;
     CEL_Color title_fg = t->primary.color;
     CEL_TextAttr title_attr = t->primary.attr;
@@ -196,7 +196,7 @@ void w_info_box_layout(struct ecs_world_t* world, cels_entity_t self) {
     const Widget_Theme* t = Widget_get_theme();
     const Widget_InfoBoxStyle* s = d->style;
 
-    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
+    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : (CEL_Color){0, 0, 0, 1};
     CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border.color;
     CEL_Color title_fg = t->primary.color;
     CEL_TextAttr title_attr = t->primary.attr;
@@ -732,8 +732,8 @@ void w_panel_layout(struct ecs_world_t* world, cels_entity_t self) {
                               .top = s->padding.top, .bottom = s->padding.bottom };
     }
 
-    /* Colors: style override or theme */
-    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
+    /* Colors: style override or transparent (no fill by default) */
+    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : (CEL_Color){0, 0, 0, 1};
     CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border.color;
     CEL_Color title_fg = t->primary.color;
     CEL_TextAttr title_attr = t->primary.attr;
@@ -1400,6 +1400,11 @@ void w_window_layout(struct ecs_world_t* world, cels_entity_t self) {
     /* Resolve colors from theme + style overrides */
     CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
     CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border.color;
+    /* Move mode: override border color to primary for visual feedback */
+    const W_Draggable* drag = (const W_Draggable*)ecs_get_id(world, self, W_Draggable_ensure());
+    if (drag && drag->moving) {
+        bdr_color = t->primary.color;
+    }
     CEL_Color title_fg = (s && s->title_color.a > 0) ? s->title_color : t->content_title.color;
     CEL_Color close_fg = (s && s->close_color.a > 0) ? s->close_color : t->status_error.color;
     CEL_TextAttr title_attr = t->content_title.attr;
