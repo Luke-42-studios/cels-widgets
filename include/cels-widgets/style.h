@@ -298,6 +298,7 @@ typedef struct Widget_RadioGroupStyle {
 typedef struct Widget_TabBarStyle {
     W_STYLE_COMMON_FIELDS
     CEL_Color       active_bg;    /* {0} = theme interactive_active */
+    bool            powerline;    /* false = standard tabs, true = powerline-styled tabs */
 } Widget_TabBarStyle;
 
 /* TabContent style */
@@ -429,6 +430,11 @@ static const Widget_ButtonStyle Widget_BUTTON_DANGER = {
     .bg_selected  = { 180, 40, 40, 255 },
     .fg_selected  = { 255, 255, 255, 255 },
     .border_color = { 220, 80, 80, 255 },
+};
+
+/* Powerline-styled tab bar */
+static const Widget_TabBarStyle W_TAB_POWERLINE = {
+    .powerline = true,
 };
 
 /* ============================================================================

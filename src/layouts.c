@@ -1007,61 +1007,125 @@ void w_tab_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
     const Widget_Theme* t = Widget_get_theme();
     const Widget_TabBarStyle* s = d->style;
 
+    bool powerline = (s && s->powerline);
+
     CEL_Color bar_bg = (s && s->bg.a > 0) ? s->bg : t->surface_alt.color;
-    CEL_Color active_fg = t->primary.color;
+    CEL_Color active_fg = t->primary_content.color;
     CEL_TextAttr active_attr = t->primary.attr;
     CEL_Color inactive_fg = t->content_muted.color;
-    CEL_Color active_tab_bg = (s && s->active_bg.a > 0) ? s->active_bg : t->surface_raised.color;
-    CEL_Color active_border = t->primary.color;
+    CEL_Color active_tab_bg = (s && s->active_bg.a > 0) ? s->active_bg : t->interactive_active.color;
+    CEL_Color inactive_tab_bg = t->surface_alt.color;
 
-    CEL_Clay(
-        .layout = {
-            .layoutDirection = CLAY_LEFT_TO_RIGHT,
-            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(2) },
-            .childGap = 0,
-            .childAlignment = { .y = CLAY_ALIGN_Y_BOTTOM }
-        },
-        .backgroundColor = bar_bg
-    ) {
-        for (int i = 0; i < d->count; i++) {
-            const char* name = (d->labels && d->labels[i]) ? d->labels[i] : "?";
-            bool active = (i == d->active);
-            CEL_Color tab_fg = active ? active_fg : inactive_fg;
+    if (powerline) {
+        /* ---- Powerline-styled tab rendering ---- */
+        /* Select separator glyph (same set as Widget_Powerline) */
+        const char* sep = Widget_powerline_glyphs_enabled()
+            ? "\xee\x82\xb0"   /* U+E0B0 Nerd Font arrow */
+            : ">";              /* ASCII fallback */
+        int sep_len = (int)strlen(sep);
 
-            char tab_buf[32];
-            int tab_len = snprintf(tab_buf, sizeof(tab_buf), " %d:%s ", i + 1, name);
+        CEL_Clay(
+            .layout = {
+                .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) }
+            }
+        ) {
+            for (int i = 0; i < d->count; i++) {
+                const char* name = (d->labels && d->labels[i]) ? d->labels[i] : "?";
+                bool active = (i == d->active);
 
-            if (active) {
-                /* Active tab: 2 rows tall with rounded top corners */
+                CEL_Color tab_bg = active ? active_tab_bg : inactive_tab_bg;
+                CEL_Color tab_fg = active ? active_fg : inactive_fg;
+                CEL_TextAttr tab_attr = active ? active_attr : (CEL_TextAttr){0};
+
+                char tab_buf[32];
+                int tab_len = snprintf(tab_buf, sizeof(tab_buf), " %s ", name);
+
+                /* Tab segment */
                 CEL_Clay(
                     .layout = {
-                        .sizing = { .height = CLAY_SIZING_FIXED(2) },
-                        .padding = { .left = 1, .right = 1 },
-                        .childAlignment = { .y = CLAY_ALIGN_Y_CENTER }
+                        .sizing = { .height = CLAY_SIZING_FIXED(1) }
                     },
-                    .backgroundColor = active_tab_bg,
-                    .border = {
-                        .color = active_border,
-                        .width = { .top = 1, .left = 1, .right = 1 }
-                    },
-                    .cornerRadius = { .topLeft = 1, .topRight = 1 }
+                    .backgroundColor = tab_bg
                 ) {
                     CLAY_TEXT(CEL_Clay_Text(tab_buf, tab_len),
                         CLAY_TEXT_CONFIG({ .textColor = tab_fg,
-                                          .userData = w_pack_text_attr(active_attr) }));
+                                          .userData = w_pack_text_attr(tab_attr) }));
                 }
-            } else {
-                /* Inactive tabs: 1 row, aligned to bottom */
-                CEL_Clay(
-                    .layout = {
-                        .sizing = { .height = CLAY_SIZING_FIXED(1) },
-                        .padding = { .left = 1, .right = 1 }
-                    },
-                    .backgroundColor = bar_bg
-                ) {
-                    CLAY_TEXT(CEL_Clay_Text(tab_buf, tab_len),
-                        CLAY_TEXT_CONFIG({ .textColor = tab_fg,
-                                          .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+
+                /* Separator between tabs */
+                if (i < d->count - 1) {
+                    CEL_Color sep_fg_c = tab_bg;  /* Arrow tip = current tab color */
+                    bool next_active = ((i + 1) == d->active);
+                    CEL_Color sep_bg_c = next_active ? active_tab_bg : inactive_tab_bg;
+
+                    CEL_Clay(
+                        .layout = {
+                            .sizing = { .height = CLAY_SIZING_FIXED(1) }
+                        },
+                        .backgroundColor = sep_bg_c
+                    ) {
+                        CLAY_TEXT(CEL_Clay_Text(sep, sep_len),
+                            CLAY_TEXT_CONFIG({ .textColor = sep_fg_c,
+                                              .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+                    }
+                }
+            }
+        }
+    } else {
+        /* ---- Standard tab rendering (unchanged) ---- */
+        CEL_Color active_border = t->primary.color;
+        CEL_Color std_active_tab_bg = (s && s->active_bg.a > 0) ? s->active_bg : t->surface_raised.color;
+
+        CEL_Clay(
+            .layout = {
+                .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(2) },
+                .childGap = 0,
+                .childAlignment = { .y = CLAY_ALIGN_Y_BOTTOM }
+            },
+            .backgroundColor = bar_bg
+        ) {
+            for (int i = 0; i < d->count; i++) {
+                const char* name = (d->labels && d->labels[i]) ? d->labels[i] : "?";
+                bool active = (i == d->active);
+                CEL_Color tab_fg = active ? t->primary.color : inactive_fg;
+
+                char tab_buf[32];
+                int tab_len = snprintf(tab_buf, sizeof(tab_buf), " %d:%s ", i + 1, name);
+
+                if (active) {
+                    /* Active tab: 2 rows tall with rounded top corners */
+                    CEL_Clay(
+                        .layout = {
+                            .sizing = { .height = CLAY_SIZING_FIXED(2) },
+                            .padding = { .left = 1, .right = 1 },
+                            .childAlignment = { .y = CLAY_ALIGN_Y_CENTER }
+                        },
+                        .backgroundColor = std_active_tab_bg,
+                        .border = {
+                            .color = active_border,
+                            .width = { .top = 1, .left = 1, .right = 1 }
+                        },
+                        .cornerRadius = { .topLeft = 1, .topRight = 1 }
+                    ) {
+                        CLAY_TEXT(CEL_Clay_Text(tab_buf, tab_len),
+                            CLAY_TEXT_CONFIG({ .textColor = tab_fg,
+                                              .userData = w_pack_text_attr(active_attr) }));
+                    }
+                } else {
+                    /* Inactive tabs: 1 row, aligned to bottom */
+                    CEL_Clay(
+                        .layout = {
+                            .sizing = { .height = CLAY_SIZING_FIXED(1) },
+                            .padding = { .left = 1, .right = 1 }
+                        },
+                        .backgroundColor = bar_bg
+                    ) {
+                        CLAY_TEXT(CEL_Clay_Text(tab_buf, tab_len),
+                            CLAY_TEXT_CONFIG({ .textColor = tab_fg,
+                                              .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+                    }
                 }
             }
         }
