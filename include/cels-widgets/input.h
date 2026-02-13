@@ -85,6 +85,23 @@ extern void widgets_focus_system_register(void);
  */
 extern void widgets_behavioral_systems_register(void);
 
+/*
+ * Text input behavioral system: processes raw_key into buffer edits.
+ * Called from the focus system each frame with world, current input, and
+ * previous input (for edge detection). Only processes entities that are
+ * both focused and selected.
+ */
+struct ecs_world_t;
+extern void text_input_system_run(struct ecs_world_t* world,
+                                  const CELS_Input* input,
+                                  const CELS_Input* prev_input);
+
+/*
+ * Check if any text input entity is currently focused+selected (active).
+ * Used by the focus system to suppress q-quit and arrow navigation.
+ */
+extern bool text_input_is_active(struct ecs_world_t* world);
+
 #ifdef __cplusplus
 }
 #endif

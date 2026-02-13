@@ -22,6 +22,12 @@
 #include <flecs.h>
 #include <string.h>
 
+/* Backend quit guard -- provided by the backend input module (e.g., tui_input.c).
+ * Declared extern here to avoid a hard dependency on any specific backend header.
+ * The linker resolves this at link time since cels-widgets is an INTERFACE library
+ * compiled in the consumer's context alongside a backend module. */
+extern void tui_input_set_quit_guard(bool (*guard_fn)(void));
+
 /* ============================================================================
  * Previous Input State (edge detection for NavigationGroup)
  * ============================================================================ */
@@ -759,6 +765,22 @@ static bool process_window_dragging(ecs_world_t* world, const CELS_Input* input)
 }
 
 /* ============================================================================
+ * Text Input Active Detection (quit guard callback)
+ *
+ * Registered with the backend input module so that 'q' passes through as
+ * raw_key when any text input entity is focused+selected. Without this,
+ * 'q' triggers immediate application quit before the text input system
+ * can process it as a character.
+ * ============================================================================ */
+
+static bool s_text_input_quit_guard(void) {
+    CELS_Context* ctx = cels_get_context();
+    ecs_world_t* world = cels_get_world(ctx);
+    if (!world) return false;
+    return text_input_is_active(world);
+}
+
+/* ============================================================================
  * Focus System Callback
  * ============================================================================ */
 
@@ -784,10 +806,23 @@ static void focus_system_run(CELS_Iter* it) {
     /* Process overlay dismiss (modals first, then windows) */
     ecs_world_t* world = cels_get_world(ctx);
     if (world) {
+        /* Check if any text input is active (focused + selected) */
+        bool text_input_active = text_input_is_active(world);
+
+        /* Run text input system when active -- processes raw_key into buffer edits.
+         * Must run before navigation groups so character input is consumed. */
+        if (text_input_active) {
+            text_input_system_run(world, input, &s_prev_input);
+        }
+
         process_modal_overlay(world, input);
         process_window_overlay(world, input);
         bool dragging = process_window_dragging(world, input);
-        if (!dragging) {
+
+        /* When text input is active, suppress navigation group processing
+         * so Left/Right arrows move cursor instead of cycling selection,
+         * and Enter submits text instead of triggering button press. */
+        if (!dragging && !text_input_active) {
             process_navigation_groups(world, input);
         }
         process_split_pane_navigation(world, input);
@@ -821,6 +856,13 @@ void widgets_focus_system_register(void) {
     W_Modal_ensure();
     W_OverlayState_ensure();
     W_Draggable_ensure();
+
+    /* Text input components (for active detection) */
+    W_TextInputBuffer_ensure();
+    W_TextInput_ensure();
+
+    /* Register quit guard so 'q' passes through when text input is active */
+    tui_input_set_quit_guard(s_text_input_quit_guard);
 
     cels_entity_t components[] = { W_FocusableID };
     cels_system_declare("W_FocusSystem", CELS_Phase_OnUpdate,
