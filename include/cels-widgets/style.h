@@ -421,26 +421,17 @@ static inline CEL_Color Widget_resolve_color(CEL_Color override, CEL_Color fallb
 
 /* ============================================================================
  * Preset Styles
+ *
+ * The full preset library lives in <cels-widgets/presets.h>.
+ * Legacy presets below are kept as backward-compat aliases.
  * ============================================================================ */
 
-/* Compact button: fixed width, centered, border on select (all defaults) */
-static const Widget_ButtonStyle Widget_BUTTON_COMPACT = {
-    .width  = { .mode = CEL_SIZE_FIXED, .value = 20 },
-};
+#include <cels-widgets/presets.h>
 
-/* Ghost button: no background, text only, no border */
-static const Widget_ButtonStyle Widget_BUTTON_GHOST = {
-    .bg         = { 0, 0, 0, 1 },  /* alpha=1 sentinel: transparent black */
-    .bg_selected = { 0, 0, 0, 1 },
-    .border     = CEL_BORDER_NONE,
-};
-
-/* Danger button: red when selected */
-static const Widget_ButtonStyle Widget_BUTTON_DANGER = {
-    .bg_selected  = { 180, 40, 40, 255 },
-    .fg_selected  = { 255, 255, 255, 255 },
-    .border_color = { 220, 80, 80, 255 },
-};
+/* Backward-compat aliases for presets migrated to presets.h */
+#define Widget_BUTTON_COMPACT W_BUTTON_COMPACT
+#define Widget_BUTTON_GHOST   W_BUTTON_GHOST
+#define Widget_BUTTON_DANGER  W_BUTTON_DANGER
 
 /* Powerline-styled tab bar */
 static const Widget_TabBarStyle W_TAB_POWERLINE = {
