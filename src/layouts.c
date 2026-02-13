@@ -2273,8 +2273,276 @@ static const PowerlineGlyphs PL_NERD = {
  * ============================================================================ */
 
 void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
-    /* Stub -- full implementation in Task 2 */
-    (void)world; (void)self;
+    const W_LogViewer* d = (const W_LogViewer*)ecs_get_id(
+        world, self, W_LogViewer_ensure());
+    if (!d || d->entry_count <= 0 || !d->entries) {
+        /* Empty state: render placeholder */
+        const Widget_Theme* t0 = Widget_get_theme();
+        CEL_Clay(
+            .layout = {
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                .sizing = { .width = CLAY_SIZING_GROW(0),
+                            .height = CLAY_SIZING_FIXED((float)(d ? d->visible_height : 10)) },
+                .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
+            },
+            .backgroundColor = t0->surface.color
+        ) {
+            const char* msg = (d && d->entry_count <= 0) ? "No log entries" : "No log entries";
+            CLAY_TEXT(CEL_Clay_Text(msg, (int)strlen(msg)),
+                CLAY_TEXT_CONFIG({ .textColor = t0->content_muted.color,
+                                  .userData = w_pack_text_attr((CEL_TextAttr){ .dim = true }) }));
+        }
+        return;
+    }
+
+    const Widget_Theme* t = Widget_get_theme();
+    const Widget_LogViewerStyle* s = d->style;
+    int vp_height = d->visible_height > 0 ? d->visible_height : 10;
+
+    /* Get mutable state components */
+    W_LogViewerState* state = (W_LogViewerState*)ecs_get_mut_id(
+        world, self, W_LogViewerState_ensure());
+    W_Scrollable* scroll = (W_Scrollable*)ecs_get_mut_id(
+        world, self, W_Scrollable_ensure());
+    if (!state || !scroll) return;
+
+    /* One-time init of LogViewerState */
+    if (!state->initialized) {
+        state->initialized = true;
+        state->auto_scroll = true;
+        state->prev_entry_count = d->entry_count;
+    }
+
+    /* ---- Severity filtering ---- */
+    int filtered_indices[1024];
+    int filtered_count = 0;
+    for (int i = 0; i < d->entry_count && filtered_count < 1024; i++) {
+        int level_bit = 1 << d->entries[i].level;
+        if (d->severity_filter & level_bit) {
+            filtered_indices[filtered_count++] = i;
+        }
+    }
+
+    /* Update W_Scrollable total_count to filtered size */
+    scroll->total_count = filtered_count;
+    scroll->visible_count = vp_height;
+
+    /* ---- Auto-scroll logic ---- */
+    bool new_entries = (d->entry_count > state->prev_entry_count);
+    state->prev_entry_count = d->entry_count;
+
+    int max_offset = filtered_count - vp_height;
+    if (max_offset < 0) max_offset = 0;
+
+    if (state->auto_scroll && new_entries) {
+        scroll->scroll_offset = max_offset;
+    }
+
+    /* Detect manual scroll-up: user scrolled away from bottom */
+    if (scroll->scroll_offset < max_offset) {
+        state->auto_scroll = false;
+    }
+    /* Detect scroll-to-bottom: re-enable auto-scroll */
+    if (scroll->scroll_offset >= max_offset && max_offset > 0) {
+        state->auto_scroll = true;
+    }
+
+    int offset = scroll->scroll_offset;
+    if (offset < 0) offset = 0;
+    if (offset > max_offset) offset = max_offset;
+
+    bool needs_scrollbar = filtered_count > vp_height && vp_height > 0;
+
+    /* ---- Colors ---- */
+    CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface.color;
+    CEL_Color debug_fg = (s && s->debug_color.a > 0) ? s->debug_color : t->content_muted.color;
+    CEL_Color info_fg  = (s && s->info_color.a > 0)  ? s->info_color  : t->content.color;
+    CEL_Color warn_fg  = (s && s->warn_color.a > 0)  ? s->warn_color  : t->status_warning.color;
+    CEL_Color error_fg = (s && s->error_color.a > 0) ? s->error_color : t->status_error.color;
+    CEL_Color ts_fg    = (s && s->timestamp_color.a > 0) ? s->timestamp_color : t->content_muted.color;
+
+    CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border.color;
+    CEL_Color track_color = t->surface_alt.color;
+    CEL_Color thumb_color = t->content_muted.color;
+
+    /* Border decoration for log viewport frame */
+    CelClayBorderDecor* decor = _alloc_border_decor();
+    *decor = (CelClayBorderDecor){
+        .border_color = bdr_color,
+        .bg_color = bg_color,
+        .border_style = 0,
+    };
+
+    /* Handle "all filtered out" case */
+    if (filtered_count == 0) {
+        CEL_Clay(
+            .layout = {
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                .sizing = { .width = CLAY_SIZING_GROW(0),
+                            .height = CLAY_SIZING_FIXED((float)vp_height) },
+                .padding = { .left = 1, .right = 1, .top = 2, .bottom = 1 },
+                .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
+            },
+            .backgroundColor = bg_color,
+            .userData = decor
+        ) {
+            const char* msg = "No matching entries";
+            CLAY_TEXT(CEL_Clay_Text(msg, (int)strlen(msg)),
+                CLAY_TEXT_CONFIG({ .textColor = t->content_muted.color,
+                                  .userData = w_pack_text_attr((CEL_TextAttr){ .dim = true }) }));
+        }
+        return;
+    }
+
+    /* ---- Outer container: horizontal (content | scrollbar) ---- */
+    CEL_Clay(
+        .layout = {
+            .layoutDirection = CLAY_LEFT_TO_RIGHT,
+            .sizing = { .width = CLAY_SIZING_GROW(0),
+                        .height = CLAY_SIZING_FIXED((float)vp_height) },
+            .padding = { .left = 1, .right = 1, .top = 2, .bottom = 1 }
+        },
+        .backgroundColor = bg_color,
+        .userData = decor
+    ) {
+        /* Content viewport: vertical stack of visible entries */
+        CEL_Clay(
+            .layout = {
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                .sizing = { .width = CLAY_SIZING_GROW(0),
+                            .height = CLAY_SIZING_GROW(0) }
+            }
+        ) {
+            int end = offset + vp_height;
+            if (end > filtered_count) end = filtered_count;
+
+            for (int vi = offset; vi < end; vi++) {
+                const W_LogEntry* entry = &d->entries[filtered_indices[vi]];
+                int level = entry->level;
+                if (level < 0) level = 0;
+                if (level > 3) level = 3;
+
+                /* Determine severity color and attributes */
+                CEL_Color line_fg;
+                CEL_TextAttr line_attr = {0};
+                const char* level_tag;
+
+                switch (level) {
+                    case 0:  /* DEBUG */
+                        line_fg = debug_fg;
+                        line_attr.dim = true;
+                        level_tag = "[D]";
+                        break;
+                    case 1:  /* INFO */
+                        line_fg = info_fg;
+                        level_tag = "[I]";
+                        break;
+                    case 2:  /* WARN */
+                        line_fg = warn_fg;
+                        line_attr.bold = true;
+                        level_tag = "[W]";
+                        break;
+                    case 3:  /* ERROR */
+                        line_fg = error_fg;
+                        line_attr.bold = true;
+                        level_tag = "[E]";
+                        break;
+                    default:
+                        line_fg = info_fg;
+                        level_tag = "[?]";
+                        break;
+                }
+
+                /* Row: LEFT_TO_RIGHT, GROW width, FIXED(1) height */
+                CEL_Clay(
+                    .layout = {
+                        .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                        .sizing = { .width = CLAY_SIZING_GROW(0),
+                                    .height = CLAY_SIZING_FIXED(1) }
+                    }
+                ) {
+                    /* Timestamp (optional) */
+                    if (entry->timestamp) {
+                        static char ts_buf[16];
+                        int ts_len = snprintf(ts_buf, sizeof(ts_buf), "%-12s", entry->timestamp);
+                        if (ts_len >= (int)sizeof(ts_buf)) ts_len = (int)sizeof(ts_buf) - 1;
+                        CLAY_TEXT(CEL_Clay_Text(ts_buf, ts_len),
+                            CLAY_TEXT_CONFIG({ .textColor = ts_fg,
+                                              .userData = w_pack_text_attr((CEL_TextAttr){ .dim = true }) }));
+                    }
+
+                    /* Severity indicator */
+                    static char tag_buf[8];
+                    int tag_len = snprintf(tag_buf, sizeof(tag_buf), "%s ", level_tag);
+                    CLAY_TEXT(CEL_Clay_Text(tag_buf, tag_len),
+                        CLAY_TEXT_CONFIG({ .textColor = line_fg,
+                                          .userData = w_pack_text_attr(line_attr) }));
+
+                    /* Message text */
+                    const char* msg = entry->message ? entry->message : "";
+                    CLAY_TEXT(CEL_Clay_Text(msg, (int)strlen(msg)),
+                        CLAY_TEXT_CONFIG({ .textColor = line_fg,
+                                          .userData = w_pack_text_attr(line_attr) }));
+                }
+            }
+        }
+
+        /* ---- Scrollbar gutter (right side) ---- */
+        if (needs_scrollbar) {
+            int track_h = vp_height;
+            int thumb_h = (vp_height * track_h) / filtered_count;
+            if (thumb_h < 1) thumb_h = 1;
+            int thumb_y = (max_offset > 0) ? (offset * (track_h - thumb_h)) / max_offset : 0;
+            int track_below = track_h - thumb_y - thumb_h;
+            if (track_below < 0) track_below = 0;
+
+            float cell_w = 1.0f / CEL_CELL_ASPECT_RATIO;
+            CEL_Clay(
+                .layout = {
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    .sizing = {
+                        .width = CLAY_SIZING_FIXED(cell_w),
+                        .height = CLAY_SIZING_GROW(0)
+                    }
+                }
+            ) {
+                /* Track above thumb */
+                if (thumb_y > 0) {
+                    CEL_Clay(
+                        .layout = { .sizing = {
+                            .width = CLAY_SIZING_FIXED(cell_w),
+                            .height = CLAY_SIZING_FIXED((float)thumb_y)
+                        }},
+                        .backgroundColor = track_color
+                    ) {}
+                }
+                /* Thumb */
+                CEL_Clay(
+                    .layout = { .sizing = {
+                        .width = CLAY_SIZING_FIXED(cell_w),
+                        .height = CLAY_SIZING_FIXED((float)thumb_h)
+                    }},
+                    .backgroundColor = thumb_color
+                ) {}
+                /* Track below thumb */
+                if (track_below > 0) {
+                    CEL_Clay(
+                        .layout = { .sizing = {
+                            .width = CLAY_SIZING_FIXED(cell_w),
+                            .height = CLAY_SIZING_FIXED((float)track_below)
+                        }},
+                        .backgroundColor = track_color
+                    ) {}
+                }
+            }
+        }
+    }
+
+    /* Write back modified state */
+    ecs_set_id(world, self, W_LogViewerState_ensure(),
+               sizeof(W_LogViewerState), state);
+    ecs_set_id(world, self, W_Scrollable_ensure(),
+               sizeof(W_Scrollable), scroll);
 }
 
 void w_powerline_layout(struct ecs_world_t* world, cels_entity_t self) {
