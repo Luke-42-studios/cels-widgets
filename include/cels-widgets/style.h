@@ -379,6 +379,12 @@ typedef struct Widget_BarChartStyle {
     CEL_Color       gradient_end;    /* {0} = default red (220, 80, 80) */
 } Widget_BarChartStyle;
 
+/* Powerline style */
+typedef struct Widget_PowerlineStyle {
+    W_STYLE_COMMON_FIELDS
+    CEL_Color       separator_fg;    /* {0} = auto (prev segment bg) */
+} Widget_PowerlineStyle;
+
 /* ============================================================================
  * Helpers -- resolve style overrides with fallbacks
  *

@@ -79,4 +79,7 @@ extern void w_toast_layout(struct ecs_world_t* world, cels_entity_t self);
 extern void w_spark_layout(struct ecs_world_t* world, cels_entity_t self);
 extern void w_bar_chart_layout(struct ecs_world_t* world, cels_entity_t self);
 
+/* Powerline */
+extern void w_powerline_layout(struct ecs_world_t* world, cels_entity_t self);
+
 #endif /* CELS_WIDGETS_LAYOUTS_H */

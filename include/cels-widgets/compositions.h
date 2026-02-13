@@ -398,6 +398,20 @@ CEL_Composition(WBarChart, const W_BarChartEntry* entries; int count;
 #define Widget_BarChart(...) CEL_Init(WBarChart, __VA_ARGS__)
 
 /* ============================================================================
+ * Powerline Compositions
+ * ============================================================================ */
+
+CEL_Composition(WPowerline, const W_PowerlineSegment* segments; int segment_count;
+                 int separator_style; const Widget_PowerlineStyle* style;) {
+    CEL_Has(ClayUI, .layout_fn = w_powerline_layout);
+    CEL_Has(W_Powerline, .segments = props.segments,
+            .segment_count = props.segment_count,
+            .separator_style = props.separator_style,
+            .style = props.style);
+}
+#define Widget_Powerline(...) CEL_Init(WPowerline, __VA_ARGS__)
+
+/* ============================================================================
  * Backward Compatibility (v0.2 -> v0.3)
  * ============================================================================ */
 #define WText(...)        Widget_Text(__VA_ARGS__)
@@ -432,5 +446,6 @@ CEL_Composition(WBarChart, const W_BarChartEntry* entries; int count;
 #define WTextInput(...)   Widget_TextInput(__VA_ARGS__)
 #define WSpark(...)       Widget_Spark(__VA_ARGS__)
 #define WBarChart(...)    Widget_BarChart(__VA_ARGS__)
+#define WPowerline(...)   Widget_Powerline(__VA_ARGS__)
 
 #endif /* CELS_WIDGETS_COMPOSITIONS_H */

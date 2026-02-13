@@ -10,6 +10,20 @@
 #include <cels-widgets/input.h>
 
 /* ============================================================================
+ * Powerline Glyph State
+ * ============================================================================ */
+
+static bool s_powerline_glyphs = false;
+
+void Widget_set_powerline_glyphs(bool enabled) {
+    s_powerline_glyphs = enabled;
+}
+
+bool Widget_powerline_glyphs_enabled(void) {
+    return s_powerline_glyphs;
+}
+
+/* ============================================================================
  * Module Definition
  * ============================================================================ */
 
@@ -60,6 +74,9 @@ CEL_Module(Widgets) {
     W_Modal_ensure();
     W_Window_ensure();
     W_Draggable_ensure();
+
+    /* Powerline components */
+    W_Powerline_ensure();
 
     /* Register focus system */
     widgets_focus_system_register();

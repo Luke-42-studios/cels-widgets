@@ -2180,3 +2180,89 @@ void w_scrollable_layout(struct ecs_world_t* world, cels_entity_t self) {
         }
     }
 }
+
+/* ============================================================================
+ * Powerline Layout
+ * ============================================================================ */
+
+/* Powerline glyph tables */
+typedef struct {
+    const char* left_hard;   /* Arrow separator (hard) */
+    const char* left_soft;   /* Thin separator (soft) */
+    const char* left_round;  /* Round separator */
+} PowerlineGlyphs;
+
+static const PowerlineGlyphs PL_ASCII = {
+    .left_hard  = ">",
+    .left_soft  = "|",
+    .left_round = "(",
+};
+
+static const PowerlineGlyphs PL_NERD = {
+    .left_hard  = "\xee\x82\xb0",  /* U+E0B0 */
+    .left_soft  = "\xee\x82\xb1",  /* U+E0B1 */
+    .left_round = "\xee\x82\xb4",  /* U+E0B4 */
+};
+
+void w_powerline_layout(struct ecs_world_t* world, cels_entity_t self) {
+    const W_Powerline* d = (const W_Powerline*)ecs_get_id(world, self, W_Powerline_ensure());
+    if (!d || d->segment_count <= 0 || !d->segments) return;
+
+    const PowerlineGlyphs* gl = Widget_powerline_glyphs_enabled() ? &PL_NERD : &PL_ASCII;
+
+    /* Select separator based on style */
+    const char* sep;
+    switch (d->separator_style) {
+        case 1:  sep = gl->left_round; break;
+        case 2:  sep = gl->left_soft;  break;
+        default: sep = gl->left_hard;  break;
+    }
+    int sep_len = (int)strlen(sep);
+
+    /* Outer horizontal container */
+    CEL_Clay(
+        .layout = {
+            .layoutDirection = CLAY_LEFT_TO_RIGHT,
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) }
+        }
+    ) {
+        for (int i = 0; i < d->segment_count; i++) {
+            const W_PowerlineSegment* seg = &d->segments[i];
+            const char* text = seg->text ? seg->text : "";
+
+            /* Segment text with padding */
+            static char seg_buf[128];
+            int seg_len = snprintf(seg_buf, sizeof(seg_buf), " %s ", text);
+            if (seg_len < 0) seg_len = 0;
+            if (seg_len >= (int)sizeof(seg_buf)) seg_len = (int)sizeof(seg_buf) - 1;
+
+            CEL_Clay(
+                .layout = {
+                    .sizing = { .height = CLAY_SIZING_FIXED(1) }
+                },
+                .backgroundColor = seg->bg
+            ) {
+                CLAY_TEXT(CEL_Clay_Text(seg_buf, seg_len),
+                    CLAY_TEXT_CONFIG({ .textColor = seg->fg,
+                                      .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+            }
+
+            /* Separator between segments (not after last) */
+            if (i < d->segment_count - 1) {
+                CEL_Color sep_fg = seg->bg;                    /* Arrow tip = current segment color */
+                CEL_Color sep_bg = d->segments[i + 1].bg;     /* Background = next segment color */
+
+                CEL_Clay(
+                    .layout = {
+                        .sizing = { .height = CLAY_SIZING_FIXED(1) }
+                    },
+                    .backgroundColor = sep_bg
+                ) {
+                    CLAY_TEXT(CEL_Clay_Text(sep, sep_len),
+                        CLAY_TEXT_CONFIG({ .textColor = sep_fg,
+                                          .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+                }
+            }
+        }
+    }
+}

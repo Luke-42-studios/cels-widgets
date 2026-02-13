@@ -441,6 +441,30 @@ CEL_Define(W_BarChart, {
 });
 
 /* ============================================================================
+ * Powerline Components
+ * ============================================================================ */
+
+/* PowerlineSegment: single colored segment (NOT a CEL_Define, plain struct) */
+typedef struct W_PowerlineSegment {
+    const char* text;       /* Segment label text */
+    CEL_Color bg;           /* Segment background color */
+    CEL_Color fg;           /* Segment foreground/text color */
+} W_PowerlineSegment;
+
+/* Powerline: horizontal bar of colored segments with shaped separators */
+CEL_Define(W_Powerline, {
+    const W_PowerlineSegment* segments;  /* Pointer to segment array (static/global) */
+    int segment_count;                   /* Number of segments */
+    int separator_style;                 /* 0=hard (arrow), 1=round, 2=soft (thin) */
+    const Widget_PowerlineStyle* style;  /* Visual overrides (NULL = defaults) */
+});
+
+/* Enable/disable Nerd Font powerline glyphs (default: false = ASCII fallback) */
+extern void Widget_set_powerline_glyphs(bool enabled);
+/* Query current powerline glyph mode */
+extern bool Widget_powerline_glyphs_enabled(void);
+
+/* ============================================================================
  * Module API
  * ============================================================================ */
 
