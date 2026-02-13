@@ -361,6 +361,24 @@ typedef struct Widget_TextInputStyle {
     CEL_Color       selection_color;   /* {0} = theme interactive_active */
 } Widget_TextInputStyle;
 
+/* Spark style */
+typedef struct Widget_SparkStyle {
+    W_STYLE_COMMON_FIELDS
+    CEL_Color       spark_color;   /* {0} = theme primary */
+} Widget_SparkStyle;
+
+/* BarChart style */
+typedef struct Widget_BarChartStyle {
+    W_STYLE_COMMON_FIELDS
+    CEL_Color       bar_color;       /* {0} = theme progress_fill (when no gradient) */
+    CEL_Color       track_color;     /* {0} = theme progress_track */
+    CEL_Color       label_color;     /* {0} = theme content_muted */
+    CEL_Color       value_color;     /* {0} = theme content */
+    CEL_Color       gradient_start;  /* {0} = default green (80, 200, 100) */
+    CEL_Color       gradient_mid;    /* {0} = default yellow (220, 200, 60) */
+    CEL_Color       gradient_end;    /* {0} = default red (220, 80, 80) */
+} Widget_BarChartStyle;
+
 /* ============================================================================
  * Helpers -- resolve style overrides with fallbacks
  *

@@ -410,6 +410,37 @@ CEL_Define(W_Draggable, {
 });
 
 /* ============================================================================
+ * Data Visualization Components
+ * ============================================================================ */
+
+/* Spark: sparkline chart from float array using Unicode block characters */
+CEL_Define(W_Spark, {
+    const float* values;    /* Pointer to float array (caller-owned, static/global storage) */
+    int count;              /* Number of values in array */
+    float min;              /* Manual minimum (0 = auto-scale from data) */
+    float max;              /* Manual maximum (0 = auto-scale from data) */
+    bool has_min;           /* true if min is explicitly set */
+    bool has_max;           /* true if max is explicitly set */
+    const Widget_SparkStyle* style; /* Visual overrides (NULL = defaults) */
+});
+
+/* BarChartEntry: single bar entry (NOT a CEL_Define, just a plain struct) */
+typedef struct W_BarChartEntry {
+    const char* label;      /* Bar label text */
+    float value;            /* Bar value */
+    CEL_Color color;        /* Per-bar color override ({0,0,0,0} = use theme/gradient) */
+} W_BarChartEntry;
+
+/* BarChart: horizontal bar chart with labels, values, and optional gradient */
+CEL_Define(W_BarChart, {
+    const W_BarChartEntry* entries; /* Pointer to entry array (caller-owned, static/global) */
+    int count;              /* Number of entries */
+    float max_value;        /* Manual max value for scaling (0 = auto-scale from data) */
+    bool gradient;          /* Enable green-yellow-red gradient per bar based on normalized value */
+    const Widget_BarChartStyle* style; /* Visual overrides (NULL = defaults) */
+});
+
+/* ============================================================================
  * Module API
  * ============================================================================ */
 

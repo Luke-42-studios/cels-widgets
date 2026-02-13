@@ -373,6 +373,31 @@ CEL_Composition(WToast, const char* message; float duration; int severity; int p
 #define Widget_Toast(...) CEL_Init(WToast, __VA_ARGS__)
 
 /* ============================================================================
+ * Data Visualization Compositions
+ * ============================================================================ */
+
+CEL_Composition(WSpark, const float* values; int count;
+                 float min; float max; bool has_min; bool has_max;
+                 const Widget_SparkStyle* style;) {
+    CEL_Has(ClayUI, .layout_fn = w_spark_layout);
+    CEL_Has(W_Spark, .values = props.values, .count = props.count,
+            .min = props.min, .max = props.max,
+            .has_min = props.has_min, .has_max = props.has_max,
+            .style = props.style);
+}
+#define Widget_Spark(...) CEL_Init(WSpark, __VA_ARGS__)
+
+CEL_Composition(WBarChart, const W_BarChartEntry* entries; int count;
+                 float max_value; bool gradient;
+                 const Widget_BarChartStyle* style;) {
+    CEL_Has(ClayUI, .layout_fn = w_bar_chart_layout);
+    CEL_Has(W_BarChart, .entries = props.entries, .count = props.count,
+            .max_value = props.max_value, .gradient = props.gradient,
+            .style = props.style);
+}
+#define Widget_BarChart(...) CEL_Init(WBarChart, __VA_ARGS__)
+
+/* ============================================================================
  * Backward Compatibility (v0.2 -> v0.3)
  * ============================================================================ */
 #define WText(...)        Widget_Text(__VA_ARGS__)
@@ -405,5 +430,7 @@ CEL_Composition(WToast, const char* message; float duration; int severity; int p
 #define WWindow(...)      Widget_Window(__VA_ARGS__)
 #define WToast(...)       Widget_Toast(__VA_ARGS__)
 #define WTextInput(...)   Widget_TextInput(__VA_ARGS__)
+#define WSpark(...)       Widget_Spark(__VA_ARGS__)
+#define WBarChart(...)    Widget_BarChart(__VA_ARGS__)
 
 #endif /* CELS_WIDGETS_COMPOSITIONS_H */
