@@ -276,6 +276,29 @@ CEL_Composition(WListItem, const char* label; bool selected; void* data; bool di
 #define Widget_ListItem(...) CEL_Init(WListItem, __VA_ARGS__)
 
 /* ============================================================================
+ * Text Input Compositions
+ * ============================================================================ */
+
+CEL_Composition(WTextInput, const char* placeholder; bool password;
+                 int max_length; bool selected; bool disabled;
+                 void (*on_change)(const char* text);
+                 void (*on_submit)(const char* text);
+                 const Widget_TextInputStyle* style;) {
+    CEL_Has(ClayUI, .layout_fn = w_text_input_layout);
+    CEL_Has(W_TextInput, .placeholder = props.placeholder,
+            .password = props.password,
+            .max_length = props.max_length,
+            .on_change = props.on_change, .on_submit = props.on_submit,
+            .style = props.style);
+    CEL_Has(W_TextInputBuffer); /* Zero-init; behavioral system inits once */
+    CEL_Has(W_Selectable, .selected = props.selected);
+    CEL_Has(W_InteractState, .selected = props.selected,
+            .disabled = props.disabled);
+    CEL_Has(W_Focusable);
+}
+#define Widget_TextInput(...) CEL_Init(WTextInput, __VA_ARGS__)
+
+/* ============================================================================
  * Navigation Group Compositions
  * ============================================================================ */
 
@@ -381,5 +404,6 @@ CEL_Composition(WToast, const char* message; float duration; int severity; int p
 #define WModal(...)       Widget_Modal(__VA_ARGS__)
 #define WWindow(...)      Widget_Window(__VA_ARGS__)
 #define WToast(...)       Widget_Toast(__VA_ARGS__)
+#define WTextInput(...)   Widget_TextInput(__VA_ARGS__)
 
 #endif /* CELS_WIDGETS_COMPOSITIONS_H */

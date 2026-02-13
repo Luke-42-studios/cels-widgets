@@ -1240,6 +1240,191 @@ void w_navigation_group_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 /* ============================================================================
+ * Text Input Layout
+ * ============================================================================ */
+
+void w_text_input_layout(struct ecs_world_t* world, cels_entity_t self) {
+    const W_TextInput* d = (const W_TextInput*)ecs_get_id(world, self, W_TextInput_ensure());
+    if (!d) return;
+    const Widget_Theme* t = Widget_get_theme();
+    const Widget_TextInputStyle* s = d->style;
+
+    /* Read persistent buffer state */
+    const W_TextInputBuffer* buf = (const W_TextInputBuffer*)ecs_get_id(
+        world, self, W_TextInputBuffer_ensure());
+
+    /* Read interaction state */
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(
+        world, self, W_InteractState_ensure());
+    bool disabled = ist ? ist->disabled : false;
+    bool focused = ist ? ist->focused : false;
+
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(
+        world, self, W_Selectable_ensure());
+    bool selected = sel ? sel->selected : false;
+
+    /* Resolve visual state */
+    W_ResolvedVisual v = w_resolve_visual(t,
+        s ? s->bg : CEL_COLOR_NONE,
+        s ? s->fg : CEL_COLOR_NONE,
+        s ? s->text_attr : (CEL_TextAttr){0},
+        s ? s->border_color : CEL_COLOR_NONE,
+        s ? s->border : CEL_BORDER_DEFAULT,
+        CEL_BORDER_ON_FOCUS,
+        selected, focused, disabled);
+
+    bool is_active = (selected && focused);
+
+    /* Build display text */
+    static char display_buf[768]; /* 256 * 3 for password bullets */
+    int display_len = 0;
+    int cursor_char = buf ? buf->cursor_pos : 0;
+    int text_len = buf ? buf->length : 0;
+    int text_byte_len = buf ? buf->byte_length : 0;
+    bool is_empty = (!buf || !buf->initialized || text_len == 0);
+    bool show_placeholder = (is_empty && !is_active && d->placeholder);
+
+    if (show_placeholder) {
+        /* Placeholder text */
+        int plen = (int)strlen(d->placeholder);
+        if (plen > (int)sizeof(display_buf) - 1) plen = (int)sizeof(display_buf) - 1;
+        memcpy(display_buf, d->placeholder, (size_t)plen);
+        display_buf[plen] = '\0';
+        display_len = plen;
+    } else if (d->password && buf && buf->initialized && text_len > 0) {
+        /* Password mode: bullet dots U+2022 (\xe2\x80\xa2) per character */
+        int pos = 0;
+        for (int i = 0; i < text_len && pos + 3 < (int)sizeof(display_buf); i++) {
+            display_buf[pos++] = '\xe2';
+            display_buf[pos++] = '\x80';
+            display_buf[pos++] = '\xa2';
+        }
+        display_buf[pos] = '\0';
+        display_len = pos;
+    } else if (buf && buf->initialized && text_byte_len > 0) {
+        /* Normal text */
+        int cplen = text_byte_len;
+        if (cplen > (int)sizeof(display_buf) - 1) cplen = (int)sizeof(display_buf) - 1;
+        memcpy(display_buf, buf->buffer, (size_t)cplen);
+        display_buf[cplen] = '\0';
+        display_len = cplen;
+    } else {
+        display_buf[0] = '\0';
+        display_len = 0;
+    }
+
+    /* Colors */
+    CEL_Color text_fg = v.fg;
+    CEL_Color placeholder_fg = (s && s->placeholder_color.a > 0)
+        ? s->placeholder_color : t->content_muted.color;
+    CEL_Color cursor_fg = (s && s->cursor_color.a > 0)
+        ? s->cursor_color : t->primary_content.color;
+
+    /* Determine scroll offset for single-line display.
+     * Default visible width estimate: 30 chars if unknown. */
+    int visible_width = 30;
+    int scroll_x = buf ? buf->scroll_x : 0;
+
+    /* Adjust scroll to keep cursor visible */
+    if (cursor_char < scroll_x) {
+        scroll_x = cursor_char;
+    }
+    if (cursor_char >= scroll_x + visible_width) {
+        scroll_x = cursor_char - visible_width + 1;
+    }
+    if (scroll_x < 0) scroll_x = 0;
+
+    /* Border decoration when focused */
+    CelClayBorderDecor* decor = NULL;
+    if (v.show_border) {
+        decor = _alloc_border_decor();
+        *decor = (CelClayBorderDecor){
+            .title = NULL,
+            .border_color = v.border_color,
+            .title_color = v.border_color,
+            .bg_color = v.bg,
+            .border_style = 0,
+            .title_text_attr = 0
+        };
+    }
+
+    /* Outer container */
+    CEL_Clay(
+        .layout = {
+            .layoutDirection = CLAY_LEFT_TO_RIGHT,
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(v.show_border ? 3 : 1) },
+            .padding = v.show_border
+                ? (Clay_Padding){ .left = 1, .right = 1, .top = 1, .bottom = 1 }
+                : (Clay_Padding){ .left = 1, .right = 1 }
+        },
+        .backgroundColor = v.bg,
+        .userData = decor
+    ) {
+        if (show_placeholder) {
+            /* Placeholder: dim text, no cursor */
+            CLAY_TEXT(CEL_Clay_Text(display_buf, display_len),
+                CLAY_TEXT_CONFIG({ .textColor = placeholder_fg,
+                                  .userData = w_pack_text_attr((CEL_TextAttr){ .dim = true }) }));
+        } else if (is_active && buf && buf->initialized) {
+            /* Active input: split text around cursor for block cursor rendering */
+
+            /* For password mode, cursor position maps to 3-byte bullet offsets */
+            int char_to_byte_before;
+            int cursor_char_bytes;
+            int after_byte_start;
+            int after_byte_len;
+
+            if (d->password) {
+                char_to_byte_before = cursor_char * 3;
+                cursor_char_bytes = (cursor_char < text_len) ? 3 : 0;
+                after_byte_start = char_to_byte_before + cursor_char_bytes;
+                after_byte_len = display_len - after_byte_start;
+            } else {
+                /* ASCII-only for now: 1 byte per character */
+                char_to_byte_before = cursor_char;
+                cursor_char_bytes = (cursor_char < text_len) ? 1 : 0;
+                after_byte_start = char_to_byte_before + cursor_char_bytes;
+                after_byte_len = display_len - after_byte_start;
+            }
+
+            /* Text before cursor */
+            if (char_to_byte_before > 0) {
+                CLAY_TEXT(CEL_Clay_Text(display_buf, char_to_byte_before),
+                    CLAY_TEXT_CONFIG({ .textColor = text_fg,
+                                      .userData = w_pack_text_attr(v.text_attr) }));
+            }
+
+            /* Cursor character (reverse video for block cursor) */
+            if (cursor_char < text_len) {
+                /* Character at cursor position */
+                CLAY_TEXT(CEL_Clay_Text(display_buf + char_to_byte_before, cursor_char_bytes),
+                    CLAY_TEXT_CONFIG({ .textColor = cursor_fg,
+                                      .userData = w_pack_text_attr((CEL_TextAttr){ .reverse = true }) }));
+            } else {
+                /* Cursor at end of text: render a space with reverse */
+                CLAY_TEXT(CLAY_STRING(" "),
+                    CLAY_TEXT_CONFIG({ .textColor = cursor_fg,
+                                      .userData = w_pack_text_attr((CEL_TextAttr){ .reverse = true }) }));
+            }
+
+            /* Text after cursor */
+            if (after_byte_len > 0) {
+                CLAY_TEXT(CEL_Clay_Text(display_buf + after_byte_start, after_byte_len),
+                    CLAY_TEXT_CONFIG({ .textColor = text_fg,
+                                      .userData = w_pack_text_attr(v.text_attr) }));
+            }
+        } else {
+            /* Inactive with text: show normally */
+            if (display_len > 0) {
+                CLAY_TEXT(CEL_Clay_Text(display_buf, display_len),
+                    CLAY_TEXT_CONFIG({ .textColor = text_fg,
+                                      .userData = w_pack_text_attr(v.text_attr) }));
+            }
+        }
+    }
+}
+
+/* ============================================================================
  * Overlay Layouts
  * ============================================================================ */
 

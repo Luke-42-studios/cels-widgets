@@ -318,6 +318,35 @@ CEL_Define(W_Scrollable, {
 });
 
 /* ============================================================================
+ * Text Input Components
+ * ============================================================================ */
+
+/* TextInput: single-line text entry field configuration (set by composition each frame) */
+CEL_Define(W_TextInput, {
+    const char* placeholder;    /* Dim hint text when empty */
+    bool multiline;             /* false=single-line (multiline forward-looking, not implemented) */
+    bool password;              /* Replace chars with bullet dots (U+2022) */
+    int max_length;             /* Buffer capacity (0 = 256 default) */
+    void (*on_change)(const char* text);  /* Callback on text change */
+    void (*on_submit)(const char* text);  /* Callback on Enter (single-line only) */
+    const Widget_TextInputStyle* style;   /* Visual overrides (NULL = defaults) */
+});
+
+/* TextInputBuffer: persistent mutable state for text input (NOT reset by composition).
+ * The composition attaches this with zero-init; the behavioral system checks
+ * buf->initialized to do one-time init, preventing composition from overwriting. */
+CEL_Define(W_TextInputBuffer, {
+    char buffer[256];           /* Text buffer (static size) */
+    int cursor_pos;             /* Cursor position in CHARACTERS (not bytes) */
+    int length;                 /* Current text length in characters */
+    int byte_length;            /* Current text length in bytes */
+    int scroll_x;               /* Horizontal scroll offset for single-line (chars) */
+    int sel_start;              /* Selection start char index (-1 = no selection) */
+    int sel_end;                /* Selection end char index */
+    bool initialized;           /* Set true after first init (prevents overwrite) */
+});
+
+/* ============================================================================
  * Overlay Components
  * ============================================================================ */
 

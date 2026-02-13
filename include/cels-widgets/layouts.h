@@ -66,6 +66,9 @@ extern void w_list_item_layout(struct ecs_world_t* world, cels_entity_t self);
 /* Navigation Group */
 extern void w_navigation_group_layout(struct ecs_world_t* world, cels_entity_t self);
 
+/* Text Input */
+extern void w_text_input_layout(struct ecs_world_t* world, cels_entity_t self);
+
 /* Overlay */
 extern void w_popup_layout(struct ecs_world_t* world, cels_entity_t self);
 extern void w_modal_layout(struct ecs_world_t* world, cels_entity_t self);

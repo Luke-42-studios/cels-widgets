@@ -353,6 +353,14 @@ typedef struct Widget_WindowStyle {
     CEL_Color       close_color;  /* {0} = theme status_error */
 } Widget_WindowStyle;
 
+/* TextInput style */
+typedef struct Widget_TextInputStyle {
+    W_STYLE_COMMON_FIELDS
+    CEL_Color       cursor_color;      /* {0} = theme primary */
+    CEL_Color       placeholder_color; /* {0} = theme content_muted */
+    CEL_Color       selection_color;   /* {0} = theme interactive_active */
+} Widget_TextInputStyle;
+
 /* ============================================================================
  * Helpers -- resolve style overrides with fallbacks
  *
