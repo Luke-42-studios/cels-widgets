@@ -1862,6 +1862,213 @@ void w_split_pane_layout(struct ecs_world_t* world, cels_entity_t self) {
  * Scrollable Container Layout
  * ============================================================================ */
 
+/* ============================================================================
+ * Data Visualization Helpers
+ * ============================================================================ */
+
+static CEL_Color w_color_lerp(CEL_Color a, CEL_Color b, float t) {
+    if (t <= 0.0f) return a;
+    if (t >= 1.0f) return b;
+    return (CEL_Color){
+        .r = (float)(a.r + (b.r - a.r) * t),
+        .g = (float)(a.g + (b.g - a.g) * t),
+        .b = (float)(a.b + (b.b - a.b) * t),
+        .a = 255
+    };
+}
+
+/* Three-stop gradient: start -> mid -> end based on normalized [0,1] value */
+static CEL_Color w_value_gradient(float normalized,
+                                   CEL_Color start, CEL_Color mid, CEL_Color end) {
+    if (normalized < 0.5f) {
+        return w_color_lerp(start, mid, normalized * 2.0f);
+    } else {
+        return w_color_lerp(mid, end, (normalized - 0.5f) * 2.0f);
+    }
+}
+
+/* ============================================================================
+ * Data Visualization Layouts
+ * ============================================================================ */
+
+void w_spark_layout(struct ecs_world_t* world, cels_entity_t self) {
+    const W_Spark* d = (const W_Spark*)ecs_get_id(world, self, W_Spark_ensure());
+    if (!d || d->count <= 0 || !d->values) return;
+    const Widget_Theme* t = Widget_get_theme();
+    const Widget_SparkStyle* s = d->style;
+
+    /* Auto-scale: find min/max from data */
+    float data_min = d->values[0];
+    float data_max = d->values[0];
+    for (int i = 1; i < d->count; i++) {
+        if (d->values[i] < data_min) data_min = d->values[i];
+        if (d->values[i] > data_max) data_max = d->values[i];
+    }
+
+    /* Override with manual min/max if explicitly set */
+    float range_min = d->has_min ? d->min : data_min;
+    float range_max = d->has_max ? d->max : data_max;
+
+    /* Division-by-zero guard: all same value renders at mid-height */
+    float range = range_max - range_min;
+    if (range <= 0.0f) range = 1.0f;
+
+    /* Unicode block characters U+2581 through U+2588 (8 levels) */
+    static const char* spark_blocks[] = {
+        "\xe2\x96\x81", "\xe2\x96\x82", "\xe2\x96\x83", "\xe2\x96\x84",
+        "\xe2\x96\x85", "\xe2\x96\x86", "\xe2\x96\x87", "\xe2\x96\x88"
+    };
+
+    /* Build display string: 3 bytes per block char, max ~170 values for 512 buffer */
+    static char spark_buf[512];
+    int pos = 0;
+    int max_vals = d->count;
+    if (max_vals > 170) max_vals = 170; /* Safety: 170 * 3 = 510 < 512 */
+
+    for (int i = 0; i < max_vals; i++) {
+        float normalized = (d->values[i] - range_min) / range;
+        /* Clamp to [0, 1] */
+        if (normalized < 0.0f) normalized = 0.0f;
+        if (normalized > 1.0f) normalized = 1.0f;
+
+        /* Map to block index 0-7 */
+        int idx = (int)(normalized * 7.0f + 0.5f);
+        if (idx > 7) idx = 7;
+
+        /* When all values are the same, range is forced to 1.0 and normalized
+         * will be some value. The mid-height block (index 3-4) is appropriate.
+         * With range=1.0 and (val-min)/1.0, all same values give normalized=0
+         * which maps to idx=0. Force mid-height when range was zero. */
+        if (range_max == range_min) idx = 3;
+
+        memcpy(spark_buf + pos, spark_blocks[idx], 3);
+        pos += 3;
+    }
+    spark_buf[pos] = '\0';
+
+    /* Spark color: style override or theme primary */
+    CEL_Color spark_fg = (s && s->spark_color.a > 0) ? s->spark_color : t->primary.color;
+
+    CEL_Clay(
+        .layout = {
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) }
+        }
+    ) {
+        CLAY_TEXT(CEL_Clay_Text(spark_buf, pos),
+            CLAY_TEXT_CONFIG({ .textColor = spark_fg,
+                              .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+    }
+}
+
+void w_bar_chart_layout(struct ecs_world_t* world, cels_entity_t self) {
+    const W_BarChart* d = (const W_BarChart*)ecs_get_id(world, self, W_BarChart_ensure());
+    if (!d || d->count <= 0 || !d->entries) return;
+    const Widget_Theme* t = Widget_get_theme();
+    const Widget_BarChartStyle* s = d->style;
+
+    /* Auto-scale max_value from data if 0 */
+    float max_val = d->max_value;
+    if (max_val <= 0.0f) {
+        max_val = d->entries[0].value;
+        for (int i = 1; i < d->count; i++) {
+            if (d->entries[i].value > max_val)
+                max_val = d->entries[i].value;
+        }
+        if (max_val <= 0.0f) max_val = 1.0f; /* Guard zero max */
+    }
+
+    /* Default gradient colors */
+    CEL_Color grad_start = (s && s->gradient_start.a > 0)
+        ? s->gradient_start : (CEL_Color){80, 200, 100, 255};
+    CEL_Color grad_mid = (s && s->gradient_mid.a > 0)
+        ? s->gradient_mid : (CEL_Color){220, 200, 60, 255};
+    CEL_Color grad_end = (s && s->gradient_end.a > 0)
+        ? s->gradient_end : (CEL_Color){220, 80, 80, 255};
+
+    /* Label and value colors */
+    CEL_Color label_fg = (s && s->label_color.a > 0)
+        ? s->label_color : t->content_muted.color;
+    CEL_Color value_fg = (s && s->value_color.a > 0)
+        ? s->value_color : t->content.color;
+    CEL_Color default_bar_fg = (s && s->bar_color.a > 0)
+        ? s->bar_color : t->progress_fill.color;
+
+    int bar_max_width = 30; /* Default bar width in terminal columns */
+
+    /* Outer container: vertical stack */
+    CEL_Clay(
+        .layout = {
+            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIT(0) }
+        }
+    ) {
+        for (int i = 0; i < d->count && i < 32; i++) {
+            float fill_ratio = d->entries[i].value / max_val;
+            if (fill_ratio < 0.0f) fill_ratio = 0.0f;
+            if (fill_ratio > 1.0f) fill_ratio = 1.0f;
+
+            int fill_width = (int)(fill_ratio * bar_max_width + 0.5f);
+            if (fill_width > bar_max_width) fill_width = bar_max_width;
+
+            /* Determine bar color */
+            CEL_Color bar_fg;
+            if (d->entries[i].color.a > 0) {
+                /* Per-bar color override */
+                bar_fg = d->entries[i].color;
+            } else if (d->gradient) {
+                /* Gradient: green-yellow-red based on normalized value */
+                bar_fg = w_value_gradient(fill_ratio, grad_start, grad_mid, grad_end);
+            } else {
+                bar_fg = default_bar_fg;
+            }
+
+            /* Build bar string: full block chars for fill */
+            static char bar_buf[128];
+            int bpos = 0;
+            for (int j = 0; j < fill_width && bpos + 3 < (int)sizeof(bar_buf); j++) {
+                bar_buf[bpos++] = '\xe2';
+                bar_buf[bpos++] = '\x96';
+                bar_buf[bpos++] = '\x88';
+            }
+            bar_buf[bpos] = '\0';
+
+            /* Format label and value text */
+            static char label_buf[16];
+            static char val_buf[12];
+            const char* lbl = d->entries[i].label ? d->entries[i].label : "";
+            int label_len = snprintf(label_buf, sizeof(label_buf), "%-12s", lbl);
+            int val_len = snprintf(val_buf, sizeof(val_buf), " %6.1f", (double)d->entries[i].value);
+
+            /* Row: label | bar fill | value */
+            CEL_Clay(
+                .layout = {
+                    .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) }
+                }
+            ) {
+                /* Label */
+                CLAY_TEXT(CEL_Clay_Text(label_buf, label_len),
+                    CLAY_TEXT_CONFIG({ .textColor = label_fg,
+                                      .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+                /* Bar fill */
+                if (bpos > 0) {
+                    CLAY_TEXT(CEL_Clay_Text(bar_buf, bpos),
+                        CLAY_TEXT_CONFIG({ .textColor = bar_fg,
+                                          .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+                }
+                /* Value */
+                CLAY_TEXT(CEL_Clay_Text(val_buf, val_len),
+                    CLAY_TEXT_CONFIG({ .textColor = value_fg,
+                                      .userData = w_pack_text_attr((CEL_TextAttr){0}) }));
+            }
+        }
+    }
+}
+
+/* ============================================================================
+ * Scrollable Container Layout
+ * ============================================================================ */
+
 void w_scrollable_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_ScrollContainer* d = (const W_ScrollContainer*)ecs_get_id(
         world, self, W_ScrollContainer_ensure());
