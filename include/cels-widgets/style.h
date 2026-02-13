@@ -386,6 +386,16 @@ typedef struct Widget_PowerlineStyle {
     CEL_Color       separator_fg;    /* {0} = auto (prev segment bg) */
 } Widget_PowerlineStyle;
 
+/* LogViewer style */
+typedef struct Widget_LogViewerStyle {
+    W_STYLE_COMMON_FIELDS
+    CEL_Color       debug_color;     /* {0} = theme content_muted (dim) */
+    CEL_Color       info_color;      /* {0} = theme content (normal) */
+    CEL_Color       warn_color;      /* {0} = theme status_warning (yellow) */
+    CEL_Color       error_color;     /* {0} = theme status_error (red) */
+    CEL_Color       timestamp_color; /* {0} = theme content_muted */
+} Widget_LogViewerStyle;
+
 /* ============================================================================
  * Helpers -- resolve style overrides with fallbacks
  *

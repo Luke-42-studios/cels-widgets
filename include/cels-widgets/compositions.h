@@ -398,6 +398,26 @@ CEL_Composition(WBarChart, const W_BarChartEntry* entries; int count;
 #define Widget_BarChart(...) CEL_Init(WBarChart, __VA_ARGS__)
 
 /* ============================================================================
+ * Log Viewer Compositions
+ * ============================================================================ */
+
+CEL_Composition(WLogViewer, const W_LogEntry* entries; int entry_count;
+                 int visible_height; int severity_filter; int scroll_offset;
+                 const Widget_LogViewerStyle* style;) {
+    CEL_Has(ClayUI, .layout_fn = w_log_viewer_layout);
+    CEL_Has(W_LogViewer, .entries = props.entries,
+            .entry_count = props.entry_count,
+            .visible_height = props.visible_height > 0 ? props.visible_height : 10,
+            .severity_filter = props.severity_filter > 0 ? props.severity_filter : 0xF,
+            .style = props.style);
+    CEL_Has(W_Scrollable, .scroll_offset = props.scroll_offset,
+            .total_count = props.entry_count,
+            .visible_count = props.visible_height > 0 ? props.visible_height : 10);
+    CEL_Has(W_LogViewerState); /* Zero-init; layout inits once */
+}
+#define Widget_LogViewer(...) CEL_Init(WLogViewer, __VA_ARGS__)
+
+/* ============================================================================
  * Powerline Compositions
  * ============================================================================ */
 
@@ -447,5 +467,6 @@ CEL_Composition(WPowerline, const W_PowerlineSegment* segments; int segment_coun
 #define WSpark(...)       Widget_Spark(__VA_ARGS__)
 #define WBarChart(...)    Widget_BarChart(__VA_ARGS__)
 #define WPowerline(...)   Widget_Powerline(__VA_ARGS__)
+#define WLogViewer(...)   Widget_LogViewer(__VA_ARGS__)
 
 #endif /* CELS_WIDGETS_COMPOSITIONS_H */

@@ -82,4 +82,7 @@ extern void w_bar_chart_layout(struct ecs_world_t* world, cels_entity_t self);
 /* Powerline */
 extern void w_powerline_layout(struct ecs_world_t* world, cels_entity_t self);
 
+/* Data Visualization - Log Viewer */
+extern void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self);
+
 #endif /* CELS_WIDGETS_LAYOUTS_H */

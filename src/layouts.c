@@ -2268,6 +2268,15 @@ static const PowerlineGlyphs PL_NERD = {
     .left_round = "\xee\x82\xb4",  /* U+E0B4 */
 };
 
+/* ============================================================================
+ * Log Viewer Layout
+ * ============================================================================ */
+
+void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
+    /* Stub -- full implementation in Task 2 */
+    (void)world; (void)self;
+}
+
 void w_powerline_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_Powerline* d = (const W_Powerline*)ecs_get_id(world, self, W_Powerline_ensure());
     if (!d || d->segment_count <= 0 || !d->segments) return;

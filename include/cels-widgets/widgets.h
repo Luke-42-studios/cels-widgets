@@ -440,6 +440,30 @@ CEL_Define(W_BarChart, {
     const Widget_BarChartStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
+/* LogEntry: single log entry (NOT a CEL_Define, plain struct) */
+typedef struct W_LogEntry {
+    const char* message;    /* Log message text */
+    int level;              /* Severity: 0=DEBUG, 1=INFO, 2=WARN, 3=ERROR */
+    const char* timestamp;  /* Optional timestamp prefix (NULL = no timestamp) */
+} W_LogEntry;
+
+/* LogViewer: scrollable, color-coded log viewer with severity filtering */
+CEL_Define(W_LogViewer, {
+    const W_LogEntry* entries;  /* Pointer to log entry array (caller-owned, static/global) */
+    int entry_count;            /* Total number of entries */
+    int visible_height;         /* Viewport rows */
+    int severity_filter;        /* Bitmask: bit 0=DEBUG, 1=INFO, 2=WARN, 3=ERROR. 0xF=show all */
+    const Widget_LogViewerStyle* style; /* Visual overrides (NULL = defaults) */
+});
+
+/* LogViewerState: persistent mutable state for auto-scroll tracking.
+ * Zero-initialized by composition; layout function inits once via .initialized flag. */
+CEL_Define(W_LogViewerState, {
+    bool auto_scroll;       /* true = auto-scroll to bottom on new entries */
+    int prev_entry_count;   /* Tracks previous entry count to detect new entries */
+    bool initialized;       /* One-time init flag (same pattern as W_TextInputBuffer) */
+});
+
 /* ============================================================================
  * Powerline Components
  * ============================================================================ */
