@@ -2297,10 +2297,25 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
 
     const Widget_Theme* t = Widget_get_theme();
     const Widget_LogViewerStyle* s = d->style;
-    int vp_height = d->visible_height > 0 ? d->visible_height : 10;
-    /* Border padding: top=1, bottom=1 — content rows = total height minus padding */
-    int content_rows = vp_height - 2;
-    if (content_rows < 1) content_rows = 1;
+
+    /* visible_height > 0: FIXED height with own border (standalone usage).
+     * visible_height == 0: GROW to fill parent, no border (inside Panel). */
+    bool grow_mode = (d->visible_height <= 0);
+    int vp_height = grow_mode ? 0 : d->visible_height;
+
+    /* Border check: skip own border when style says NONE or in grow mode */
+    CEL_BorderMode border_mode = (s && s->border) ? s->border : CEL_BORDER_DEFAULT;
+    bool has_border = !grow_mode && (border_mode != CEL_BORDER_NONE);
+
+    /* Content rows: subtract border padding (1 top + 1 bottom) when bordered.
+     * In grow mode, show all filtered entries (no fixed viewport). */
+    int content_rows;
+    if (grow_mode) {
+        content_rows = d->entry_count; /* will be clamped to filtered_count */
+    } else {
+        content_rows = has_border ? (vp_height - 2) : vp_height;
+        if (content_rows < 1) content_rows = 1;
+    }
 
     /* Get mutable state components */
     W_LogViewerState* state = (W_LogViewerState*)ecs_get_mut_id(
@@ -2368,13 +2383,24 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
     CEL_Color track_color = t->surface_alt.color;
     CEL_Color thumb_color = t->content_muted.color;
 
-    /* Border decoration for log viewport frame */
-    CelClayBorderDecor* decor = _alloc_border_decor();
-    *decor = (CelClayBorderDecor){
-        .border_color = bdr_color,
-        .bg_color = bg_color,
-        .border_style = 0,
-    };
+    /* Border decoration for log viewport frame (skipped in grow/borderless mode) */
+    CelClayBorderDecor* decor = NULL;
+    if (has_border) {
+        decor = _alloc_border_decor();
+        *decor = (CelClayBorderDecor){
+            .border_color = bdr_color,
+            .bg_color = bg_color,
+            .border_style = 0,
+        };
+    }
+
+    /* Sizing and padding depend on mode */
+    Clay_SizingAxis h_sizing = grow_mode
+        ? CLAY_SIZING_GROW(0)
+        : CLAY_SIZING_FIXED((float)vp_height);
+    Clay_Padding lv_pad = has_border
+        ? (Clay_Padding){ .left = 1, .right = 1, .top = 1, .bottom = 1 }
+        : (Clay_Padding){ 0 };
 
     /* Handle "all filtered out" case */
     if (filtered_count == 0) {
@@ -2382,8 +2408,8 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
             .layout = {
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .sizing = { .width = CLAY_SIZING_GROW(0),
-                            .height = CLAY_SIZING_FIXED((float)vp_height) },
-                .padding = { .left = 1, .right = 1, .top = 1, .bottom = 1 },
+                            .height = h_sizing },
+                .padding = lv_pad,
                 .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
             },
             .backgroundColor = bg_color,
@@ -2402,8 +2428,8 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
         .layout = {
             .layoutDirection = CLAY_LEFT_TO_RIGHT,
             .sizing = { .width = CLAY_SIZING_GROW(0),
-                        .height = CLAY_SIZING_FIXED((float)vp_height) },
-            .padding = { .left = 1, .right = 1, .top = 1, .bottom = 1 }
+                        .height = h_sizing },
+            .padding = lv_pad
         },
         .backgroundColor = bg_color,
         .userData = decor
