@@ -2298,8 +2298,8 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
     const Widget_Theme* t = Widget_get_theme();
     const Widget_LogViewerStyle* s = d->style;
     int vp_height = d->visible_height > 0 ? d->visible_height : 10;
-    /* Border padding: top=2, bottom=1 — content rows = total height minus padding */
-    int content_rows = vp_height - 3;
+    /* Border padding: top=1, bottom=1 — content rows = total height minus padding */
+    int content_rows = vp_height - 2;
     if (content_rows < 1) content_rows = 1;
 
     /* Get mutable state components */
@@ -2383,7 +2383,7 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .sizing = { .width = CLAY_SIZING_GROW(0),
                             .height = CLAY_SIZING_FIXED((float)vp_height) },
-                .padding = { .left = 1, .right = 1, .top = 2, .bottom = 1 },
+                .padding = { .left = 1, .right = 1, .top = 1, .bottom = 1 },
                 .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
             },
             .backgroundColor = bg_color,
@@ -2403,7 +2403,7 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
             .layoutDirection = CLAY_LEFT_TO_RIGHT,
             .sizing = { .width = CLAY_SIZING_GROW(0),
                         .height = CLAY_SIZING_FIXED((float)vp_height) },
-            .padding = { .left = 1, .right = 1, .top = 2, .bottom = 1 }
+            .padding = { .left = 1, .right = 1, .top = 1, .bottom = 1 }
         },
         .backgroundColor = bg_color,
         .userData = decor

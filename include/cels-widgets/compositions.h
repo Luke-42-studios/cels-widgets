@@ -413,7 +413,7 @@ CEL_Composition(WLogViewer, const W_LogEntry* entries; int entry_count;
             .style = props.style);
     CEL_Has(W_Scrollable, .scroll_offset = props.scroll_offset,
             .total_count = props.entry_count,
-            .visible_count = (props.visible_height > 0 ? props.visible_height : 10) - 3);
+            .visible_count = (props.visible_height > 0 ? props.visible_height : 10) - 2);
     CEL_Has(W_LogViewerState); /* Zero-init; layout inits once */
 }
 #define Widget_LogViewer(...) CEL_Init(WLogViewer, __VA_ARGS__)
