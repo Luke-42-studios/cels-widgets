@@ -2298,6 +2298,9 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
     const Widget_Theme* t = Widget_get_theme();
     const Widget_LogViewerStyle* s = d->style;
     int vp_height = d->visible_height > 0 ? d->visible_height : 10;
+    /* Border padding: top=2, bottom=1 — content rows = total height minus padding */
+    int content_rows = vp_height - 3;
+    if (content_rows < 1) content_rows = 1;
 
     /* Get mutable state components */
     W_LogViewerState* state = (W_LogViewerState*)ecs_get_mut_id(
@@ -2325,13 +2328,13 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
 
     /* Update W_Scrollable total_count to filtered size */
     scroll->total_count = filtered_count;
-    scroll->visible_count = vp_height;
+    scroll->visible_count = content_rows;
 
     /* ---- Auto-scroll logic ---- */
     bool new_entries = (d->entry_count > state->prev_entry_count);
     state->prev_entry_count = d->entry_count;
 
-    int max_offset = filtered_count - vp_height;
+    int max_offset = filtered_count - content_rows;
     if (max_offset < 0) max_offset = 0;
 
     if (state->auto_scroll && new_entries) {
@@ -2351,7 +2354,7 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
     if (offset < 0) offset = 0;
     if (offset > max_offset) offset = max_offset;
 
-    bool needs_scrollbar = filtered_count > vp_height && vp_height > 0;
+    bool needs_scrollbar = filtered_count > content_rows && content_rows > 0;
 
     /* ---- Colors ---- */
     CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface.color;
@@ -2413,7 +2416,7 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
                             .height = CLAY_SIZING_GROW(0) }
             }
         ) {
-            int end = offset + vp_height;
+            int end = offset + content_rows;
             if (end > filtered_count) end = filtered_count;
 
             for (int vi = offset; vi < end; vi++) {
@@ -2489,8 +2492,8 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
 
         /* ---- Scrollbar gutter (right side) ---- */
         if (needs_scrollbar) {
-            int track_h = vp_height;
-            int thumb_h = (vp_height * track_h) / filtered_count;
+            int track_h = content_rows;
+            int thumb_h = (content_rows * track_h) / filtered_count;
             if (thumb_h < 1) thumb_h = 1;
             int thumb_y = (max_offset > 0) ? (offset * (track_h - thumb_h)) / max_offset : 0;
             int track_below = track_h - thumb_y - thumb_h;
