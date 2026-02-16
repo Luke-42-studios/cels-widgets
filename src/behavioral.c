@@ -302,18 +302,18 @@ void widgets_behavioral_systems_register(void) {
     W_TextInputBuffer_ensure();
 
     cels_entity_t range_f_comps[] = { W_RangeValueFID };
-    cels_system_declare("W_RangeClampF", CELS_Phase_PostUpdate,
+    cels_system_declare("W_RangeClampF", CELS_Phase_OnUpdate,
                         range_clamp_f_run, range_f_comps, 1);
 
     cels_entity_t range_i_comps[] = { W_RangeValueIID };
-    cels_system_declare("W_RangeClampI", CELS_Phase_PostUpdate,
+    cels_system_declare("W_RangeClampI", CELS_Phase_OnUpdate,
                         range_clamp_i_run, range_i_comps, 1);
 
     cels_entity_t scroll_comps[] = { W_ScrollableID };
-    cels_system_declare("W_ScrollClamp", CELS_Phase_PostUpdate,
+    cels_system_declare("W_ScrollClamp", CELS_Phase_OnUpdate,
                         scroll_clamp_run, scroll_comps, 1);
 
     cels_entity_t toast_comps[] = { W_ToastID };
-    cels_system_declare("W_ToastTimer", CELS_Phase_PostUpdate,
+    cels_system_declare("W_ToastTimer", CELS_Phase_OnUpdate,
                         toast_timer_run, toast_comps, 1);
 }
