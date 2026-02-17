@@ -8,6 +8,7 @@
 
 #include <cels-widgets/widgets.h>
 #include <cels-widgets/input.h>
+#include <cels-layout/compositions.h>
 
 /* ============================================================================
  * Powerline Glyph State
@@ -32,51 +33,55 @@ CEL_Module(Widgets) {
     CEL_ModuleProvides(Widgets);
 
     /* Ensure all widget component types are registered */
-    W_Text_ensure();
-    W_Hint_ensure();
-    W_Canvas_ensure();
-    W_InfoBox_ensure();
-    W_Badge_ensure();
-    W_TextArea_ensure();
-    W_Button_ensure();
-    W_Slider_ensure();
-    W_Toggle_ensure();
-    W_Cycle_ensure();
-    W_ProgressBar_ensure();
-    W_Metric_ensure();
-    W_Panel_ensure();
-    W_Divider_ensure();
-    W_Table_ensure();
-    W_Collapsible_ensure();
-    W_SplitPane_ensure();
-    W_ScrollContainer_ensure();
-    W_RadioButton_ensure();
-    W_RadioGroup_ensure();
-    W_TabBar_ensure();
-    W_TabContent_ensure();
-    W_StatusBar_ensure();
-    W_ListView_ensure();
-    W_ListItem_ensure();
-    W_Focusable_ensure();
-    W_InteractState_ensure();
+    CEL_Register(W_Text);
+    CEL_Register(W_Hint);
+    CEL_Register(W_Canvas);
+    CEL_Register(W_InfoBox);
+    CEL_Register(W_Badge);
+    CEL_Register(W_TextArea);
+    CEL_Register(W_Button);
+    CEL_Register(W_Slider);
+    CEL_Register(W_Toggle);
+    CEL_Register(W_Cycle);
+    CEL_Register(W_ProgressBar);
+    CEL_Register(W_Metric);
+    CEL_Register(W_Panel);
+    CEL_Register(W_Divider);
+    CEL_Register(W_Table);
+    CEL_Register(W_Collapsible);
+    CEL_Register(W_SplitPane);
+    CEL_Register(W_ScrollContainer);
+    CEL_Register(W_RadioButton);
+    CEL_Register(W_RadioGroup);
+    CEL_Register(W_TabBar);
+    CEL_Register(W_TabContent);
+    CEL_Register(W_StatusBar);
+    CEL_Register(W_ListView);
+    CEL_Register(W_ListItem);
+    CEL_Register(W_Focusable);
+    CEL_Register(W_InteractState);
 
     /* Behavioral components */
-    W_Selectable_ensure();
-    W_RangeValueF_ensure();
-    W_RangeValueI_ensure();
-    W_Scrollable_ensure();
-    W_NavigationScope_ensure();
+    CEL_Register(W_Selectable);
+    CEL_Register(W_RangeValueF);
+    CEL_Register(W_RangeValueI);
+    CEL_Register(W_Scrollable);
+    CEL_Register(W_NavigationScope);
 
     /* Overlay components */
-    W_OverlayState_ensure();
-    W_Toast_ensure();
-    W_Popup_ensure();
-    W_Modal_ensure();
-    W_Window_ensure();
-    W_Draggable_ensure();
+    CEL_Register(W_OverlayState);
+    CEL_Register(W_Toast);
+    CEL_Register(W_Popup);
+    CEL_Register(W_Modal);
+    CEL_Register(W_Window);
+    CEL_Register(W_Draggable);
 
     /* Powerline components */
-    W_Powerline_ensure();
+    CEL_Register(W_Powerline);
+
+    /* Layout config components (from cels-layout) */
+    Layout_StackConfig_register();
+    Layout_CenterConfig_register();
 
     /* Register focus system */
     widgets_focus_system_register();

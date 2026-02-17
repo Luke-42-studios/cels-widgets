@@ -92,7 +92,7 @@ static CEL_Color status_color(const Widget_Theme* t, int status) {
  * ============================================================================ */
 
 void w_text_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Text* d = (const W_Text*)ecs_get_id(world, self, W_Text_ensure());
+    const W_Text* d = (const W_Text*)ecs_get_id(world, self, W_TextID);
     if (!d || !d->text) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_TextStyle* s = d->style;
@@ -119,7 +119,7 @@ void w_text_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_hint_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Hint* d = (const W_Hint*)ecs_get_id(world, self, W_Hint_ensure());
+    const W_Hint* d = (const W_Hint*)ecs_get_id(world, self, W_HintID);
     if (!d || !d->text) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_HintStyle* s = d->style;
@@ -142,7 +142,7 @@ void w_hint_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_canvas_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Canvas* d = (const W_Canvas*)ecs_get_id(world, self, W_Canvas_ensure());
+    const W_Canvas* d = (const W_Canvas*)ecs_get_id(world, self, W_CanvasID);
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_CanvasStyle* s = d->style;
@@ -191,7 +191,7 @@ void w_canvas_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_info_box_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_InfoBox* d = (const W_InfoBox*)ecs_get_id(world, self, W_InfoBox_ensure());
+    const W_InfoBox* d = (const W_InfoBox*)ecs_get_id(world, self, W_InfoBoxID);
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_InfoBoxStyle* s = d->style;
@@ -255,7 +255,7 @@ void w_info_box_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_badge_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Badge* d = (const W_Badge*)ecs_get_id(world, self, W_Badge_ensure());
+    const W_Badge* d = (const W_Badge*)ecs_get_id(world, self, W_BadgeID);
     if (!d || !d->text) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_BadgeStyle* s = d->style;
@@ -289,13 +289,13 @@ void w_badge_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_text_area_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_TextArea* d = (const W_TextArea*)ecs_get_id(world, self, W_TextArea_ensure());
+    const W_TextArea* d = (const W_TextArea*)ecs_get_id(world, self, W_TextAreaID);
     if (!d || !d->text) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_TextAreaStyle* s = d->style;
 
     /* Read W_Scrollable for scroll state (behavioral component, preparatory) */
-    const W_Scrollable* scr = (const W_Scrollable*)ecs_get_id(world, self, W_Scrollable_ensure());
+    const W_Scrollable* scr = (const W_Scrollable*)ecs_get_id(world, self, W_ScrollableID);
     (void)scr; /* Available for future scroll offset control */
 
     CEL_Color text_fg = (s && s->fg.a > 0) ? s->fg : t->content.color;
@@ -354,18 +354,18 @@ void w_text_area_layout(struct ecs_world_t* world, cels_entity_t self) {
  * ============================================================================ */
 
 void w_button_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Button* d = (const W_Button*)ecs_get_id(world, self, W_Button_ensure());
+    const W_Button* d = (const W_Button*)ecs_get_id(world, self, W_ButtonID);
     if (!d || !d->label) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_ButtonStyle* s = d->style;
 
     /* Read W_InteractState if available (set by composition macro) */
-    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractStateID);
     bool disabled = ist ? ist->disabled : false;
     bool focused = ist ? ist->focused : false;
 
     /* Read W_Selectable for selection state (behavioral component) */
-    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_SelectableID);
     bool selected = sel ? sel->selected : false;
 
     W_ResolvedVisual v = w_resolve_visual(t,
@@ -429,16 +429,16 @@ void w_button_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_slider_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Slider* d = (const W_Slider*)ecs_get_id(world, self, W_Slider_ensure());
+    const W_Slider* d = (const W_Slider*)ecs_get_id(world, self, W_SliderID);
     if (!d || !d->label) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_SliderStyle* s = d->style;
 
-    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractStateID);
     bool disabled = ist ? ist->disabled : false;
 
     /* Read W_Selectable for selection state (behavioral component) */
-    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_SelectableID);
     bool selected = sel ? sel->selected : false;
 
     W_ResolvedVisual v = w_resolve_visual(t,
@@ -454,7 +454,7 @@ void w_slider_layout(struct ecs_world_t* world, cels_entity_t self) {
     CEL_Color bar_color = (s && s->fill_color.a > 0) ? s->fill_color : t->primary.color;
 
     /* Read W_RangeValueF for range data (behavioral component) */
-    const W_RangeValueF* rv = (const W_RangeValueF*)ecs_get_id(world, self, W_RangeValueF_ensure());
+    const W_RangeValueF* rv = (const W_RangeValueF*)ecs_get_id(world, self, W_RangeValueFID);
     float val = rv ? rv->value : 0.0f;
     float rmin = rv ? rv->min : 0.0f;
     float rmax = rv ? rv->max : 1.0f;
@@ -496,16 +496,16 @@ void w_slider_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_toggle_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Toggle* d = (const W_Toggle*)ecs_get_id(world, self, W_Toggle_ensure());
+    const W_Toggle* d = (const W_Toggle*)ecs_get_id(world, self, W_ToggleID);
     if (!d || !d->label) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_ToggleStyle* s = d->style;
 
-    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractStateID);
     bool disabled = ist ? ist->disabled : false;
 
     /* Read W_Selectable for selection state (behavioral component) */
-    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_SelectableID);
     bool selected = sel ? sel->selected : false;
 
     W_ResolvedVisual v = w_resolve_visual(t,
@@ -551,16 +551,16 @@ void w_toggle_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_cycle_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Cycle* d = (const W_Cycle*)ecs_get_id(world, self, W_Cycle_ensure());
+    const W_Cycle* d = (const W_Cycle*)ecs_get_id(world, self, W_CycleID);
     if (!d || !d->label) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_CycleStyle* s = d->style;
 
-    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractStateID);
     bool disabled = ist ? ist->disabled : false;
 
     /* Read W_Selectable for selection state (behavioral component) */
-    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_SelectableID);
     bool selected = sel ? sel->selected : false;
 
     W_ResolvedVisual v = w_resolve_visual(t,
@@ -613,13 +613,13 @@ void w_cycle_layout(struct ecs_world_t* world, cels_entity_t self) {
  * ============================================================================ */
 
 void w_progress_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_ProgressBar* d = (const W_ProgressBar*)ecs_get_id(world, self, W_ProgressBar_ensure());
+    const W_ProgressBar* d = (const W_ProgressBar*)ecs_get_id(world, self, W_ProgressBarID);
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_ProgressBarStyle* s = d->style;
 
     /* Read W_RangeValueF for progress value (behavioral component) */
-    const W_RangeValueF* rv = (const W_RangeValueF*)ecs_get_id(world, self, W_RangeValueF_ensure());
+    const W_RangeValueF* rv = (const W_RangeValueF*)ecs_get_id(world, self, W_RangeValueFID);
     float val = rv ? rv->value : 0.0f;
 
     CEL_Color fill_color = (s && s->fill_color.a > 0) ? s->fill_color : t->progress_fill.color;
@@ -672,7 +672,7 @@ void w_progress_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_metric_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Metric* d = (const W_Metric*)ecs_get_id(world, self, W_Metric_ensure());
+    const W_Metric* d = (const W_Metric*)ecs_get_id(world, self, W_MetricID);
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_MetricStyle* s = d->style;
@@ -710,7 +710,7 @@ void w_metric_layout(struct ecs_world_t* world, cels_entity_t self) {
  * ============================================================================ */
 
 void w_panel_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Panel* d = (const W_Panel*)ecs_get_id(world, self, W_Panel_ensure());
+    const W_Panel* d = (const W_Panel*)ecs_get_id(world, self, W_PanelID);
     (void)d; /* d may be NULL if no props were set -- still render container */
     const Widget_Theme* t = Widget_get_theme();
     const Widget_PanelStyle* s = (d ? d->style : NULL);
@@ -773,7 +773,7 @@ void w_panel_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_divider_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Divider* d = (const W_Divider*)ecs_get_id(world, self, W_Divider_ensure());
+    const W_Divider* d = (const W_Divider*)ecs_get_id(world, self, W_DividerID);
     const Widget_Theme* t = Widget_get_theme();
     const Widget_DividerStyle* s = (d ? d->style : NULL);
 
@@ -798,7 +798,7 @@ void w_divider_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_table_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Table* d = (const W_Table*)ecs_get_id(world, self, W_Table_ensure());
+    const W_Table* d = (const W_Table*)ecs_get_id(world, self, W_TableID);
     if (!d || d->row_count <= 0) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_TableStyle* s = d->style;
@@ -844,17 +844,17 @@ void w_table_layout(struct ecs_world_t* world, cels_entity_t self) {
  * ============================================================================ */
 
 void w_collapsible_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Collapsible* d = (const W_Collapsible*)ecs_get_id(world, self, W_Collapsible_ensure());
+    const W_Collapsible* d = (const W_Collapsible*)ecs_get_id(world, self, W_CollapsibleID);
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_CollapsibleStyle* s = d->style;
 
     /* Read W_InteractState and W_Selectable for focus/selection visual feedback */
-    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractStateID);
     bool disabled = ist ? ist->disabled : false;
     bool focused = ist ? ist->focused : false;
 
-    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_SelectableID);
     bool selected = sel ? sel->selected : false;
 
     /* Resolve title row visual from theme + style + state */
@@ -929,16 +929,16 @@ void w_collapsible_layout(struct ecs_world_t* world, cels_entity_t self) {
  * ============================================================================ */
 
 void w_radio_button_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_RadioButton* d = (const W_RadioButton*)ecs_get_id(world, self, W_RadioButton_ensure());
+    const W_RadioButton* d = (const W_RadioButton*)ecs_get_id(world, self, W_RadioButtonID);
     if (!d || !d->label) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_RadioButtonStyle* s = d->style;
 
-    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractStateID);
     bool disabled = ist ? ist->disabled : false;
 
     /* Read W_Selectable for selection state (behavioral component) */
-    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_SelectableID);
     bool selected = sel ? sel->selected : false;
 
     W_ResolvedVisual v = w_resolve_visual(t,
@@ -971,7 +971,7 @@ void w_radio_button_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_radio_group_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_RadioGroup* d = (const W_RadioGroup*)ecs_get_id(world, self, W_RadioGroup_ensure());
+    const W_RadioGroup* d = (const W_RadioGroup*)ecs_get_id(world, self, W_RadioGroupID);
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_RadioGroupStyle* s = d->style;
@@ -1002,7 +1002,7 @@ void w_radio_group_layout(struct ecs_world_t* world, cels_entity_t self) {
  * ============================================================================ */
 
 void w_tab_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_TabBar* d = (const W_TabBar*)ecs_get_id(world, self, W_TabBar_ensure());
+    const W_TabBar* d = (const W_TabBar*)ecs_get_id(world, self, W_TabBarID);
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_TabBarStyle* s = d->style;
@@ -1133,7 +1133,7 @@ void w_tab_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_tab_content_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_TabContent* d = (const W_TabContent*)ecs_get_id(world, self, W_TabContent_ensure());
+    const W_TabContent* d = (const W_TabContent*)ecs_get_id(world, self, W_TabContentID);
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_TabContentStyle* s = d->style;
@@ -1167,7 +1167,7 @@ void w_tab_content_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_status_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_StatusBar* d = (const W_StatusBar*)ecs_get_id(world, self, W_StatusBar_ensure());
+    const W_StatusBar* d = (const W_StatusBar*)ecs_get_id(world, self, W_StatusBarID);
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_StatusBarStyle* s = d->style;
@@ -1209,13 +1209,13 @@ void w_status_bar_layout(struct ecs_world_t* world, cels_entity_t self) {
  * ============================================================================ */
 
 void w_list_view_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_ListView* d = (const W_ListView*)ecs_get_id(world, self, W_ListView_ensure());
+    const W_ListView* d = (const W_ListView*)ecs_get_id(world, self, W_ListViewID);
     (void)d;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_ListViewStyle* s = (d ? d->style : NULL);
 
     /* Read W_Scrollable for scroll state (behavioral component) */
-    const W_Scrollable* scr = (const W_Scrollable*)ecs_get_id(world, self, W_Scrollable_ensure());
+    const W_Scrollable* scr = (const W_Scrollable*)ecs_get_id(world, self, W_ScrollableID);
     (void)scr; /* Available for future scroll offset inspection */
 
     CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface.color;
@@ -1239,16 +1239,16 @@ void w_list_view_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_list_item_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_ListItem* d = (const W_ListItem*)ecs_get_id(world, self, W_ListItem_ensure());
+    const W_ListItem* d = (const W_ListItem*)ecs_get_id(world, self, W_ListItemID);
     if (!d || !d->label) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_ListItemStyle* s = d->style;
 
-    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractState_ensure());
+    const W_InteractState* ist = (const W_InteractState*)ecs_get_id(world, self, W_InteractStateID);
     bool disabled = ist ? ist->disabled : false;
 
     /* Read W_Selectable for selection state (behavioral component) */
-    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_Selectable_ensure());
+    const W_Selectable* sel = (const W_Selectable*)ecs_get_id(world, self, W_SelectableID);
     bool selected = sel ? sel->selected : false;
 
     W_ResolvedVisual v = w_resolve_visual(t,
@@ -1284,7 +1284,7 @@ void w_list_item_layout(struct ecs_world_t* world, cels_entity_t self) {
 
 void w_navigation_group_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_NavigationScope* scope = (const W_NavigationScope*)ecs_get_id(
-        world, self, W_NavigationScope_ensure());
+        world, self, W_NavigationScopeID);
     int direction = scope ? scope->direction : 0;
 
     CEL_Clay(
@@ -1308,23 +1308,23 @@ void w_navigation_group_layout(struct ecs_world_t* world, cels_entity_t self) {
  * ============================================================================ */
 
 void w_text_input_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_TextInput* d = (const W_TextInput*)ecs_get_id(world, self, W_TextInput_ensure());
+    const W_TextInput* d = (const W_TextInput*)ecs_get_id(world, self, W_TextInputID);
     if (!d) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_TextInputStyle* s = d->style;
 
     /* Read persistent buffer state */
     const W_TextInputBuffer* buf = (const W_TextInputBuffer*)ecs_get_id(
-        world, self, W_TextInputBuffer_ensure());
+        world, self, W_TextInputBufferID);
 
     /* Read interaction state */
     const W_InteractState* ist = (const W_InteractState*)ecs_get_id(
-        world, self, W_InteractState_ensure());
+        world, self, W_InteractStateID);
     bool disabled = ist ? ist->disabled : false;
     bool focused = ist ? ist->focused : false;
 
     const W_Selectable* sel = (const W_Selectable*)ecs_get_id(
-        world, self, W_Selectable_ensure());
+        world, self, W_SelectableID);
     bool selected = sel ? sel->selected : false;
 
     /* Resolve visual state */
@@ -1493,7 +1493,7 @@ void w_text_input_layout(struct ecs_world_t* world, cels_entity_t self) {
  * ============================================================================ */
 
 void w_popup_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Popup* d = (const W_Popup*)ecs_get_id(world, self, W_Popup_ensure());
+    const W_Popup* d = (const W_Popup*)ecs_get_id(world, self, W_PopupID);
     if (!d || !d->visible) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_PopupStyle* s = d->style;
@@ -1569,7 +1569,7 @@ void w_popup_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_modal_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Modal* d = (const W_Modal*)ecs_get_id(world, self, W_Modal_ensure());
+    const W_Modal* d = (const W_Modal*)ecs_get_id(world, self, W_ModalID);
     if (!d || !d->visible) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_ModalStyle* s = d->style;
@@ -1641,7 +1641,7 @@ void w_modal_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_window_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Window* d = (const W_Window*)ecs_get_id(world, self, W_Window_ensure());
+    const W_Window* d = (const W_Window*)ecs_get_id(world, self, W_WindowID);
     if (!d || !d->visible) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_WindowStyle* s = d->style;
@@ -1650,7 +1650,7 @@ void w_window_layout(struct ecs_world_t* world, cels_entity_t self) {
     CEL_Color bg_color = (s && s->bg.a > 0) ? s->bg : t->surface_raised.color;
     CEL_Color bdr_color = (s && s->border_color.a > 0) ? s->border_color : t->border.color;
     /* Move mode: override border color to primary for visual feedback */
-    const W_Draggable* drag = (const W_Draggable*)ecs_get_id(world, self, W_Draggable_ensure());
+    const W_Draggable* drag = (const W_Draggable*)ecs_get_id(world, self, W_DraggableID);
     if (drag && drag->moving) {
         bdr_color = t->primary.color;
     }
@@ -1722,7 +1722,7 @@ void w_window_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_toast_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Toast* d = (const W_Toast*)ecs_get_id(world, self, W_Toast_ensure());
+    const W_Toast* d = (const W_Toast*)ecs_get_id(world, self, W_ToastID);
     if (!d || d->dismissed) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_ToastStyle* s = d->style;
@@ -1835,7 +1835,7 @@ void w_toast_layout(struct ecs_world_t* world, cels_entity_t self) {
  * ============================================================================ */
 
 void w_split_pane_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_SplitPane* d = (const W_SplitPane*)ecs_get_id(world, self, W_SplitPane_ensure());
+    const W_SplitPane* d = (const W_SplitPane*)ecs_get_id(world, self, W_SplitPaneID);
     const Widget_Theme* t = Widget_get_theme();
     const Widget_SplitStyle* s = (d ? d->style : NULL);
 
@@ -1956,7 +1956,7 @@ static CEL_Color w_value_gradient(float normalized,
  * ============================================================================ */
 
 void w_spark_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Spark* d = (const W_Spark*)ecs_get_id(world, self, W_Spark_ensure());
+    const W_Spark* d = (const W_Spark*)ecs_get_id(world, self, W_SparkID);
     if (!d || d->count <= 0 || !d->values) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_SparkStyle* s = d->style;
@@ -2025,7 +2025,7 @@ void w_spark_layout(struct ecs_world_t* world, cels_entity_t self) {
 }
 
 void w_bar_chart_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_BarChart* d = (const W_BarChart*)ecs_get_id(world, self, W_BarChart_ensure());
+    const W_BarChart* d = (const W_BarChart*)ecs_get_id(world, self, W_BarChartID);
     if (!d || d->count <= 0 || !d->entries) return;
     const Widget_Theme* t = Widget_get_theme();
     const Widget_BarChartStyle* s = d->style;
@@ -2135,13 +2135,13 @@ void w_bar_chart_layout(struct ecs_world_t* world, cels_entity_t self) {
 
 void w_scrollable_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_ScrollContainer* d = (const W_ScrollContainer*)ecs_get_id(
-        world, self, W_ScrollContainer_ensure());
+        world, self, W_ScrollContainerID);
     const Widget_Theme* t = Widget_get_theme();
     const Widget_ScrollableStyle* s = (d ? d->style : NULL);
 
     /* Read scroll state from behavioral component */
     const W_Scrollable* scr = (const W_Scrollable*)ecs_get_id(
-        world, self, W_Scrollable_ensure());
+        world, self, W_ScrollableID);
     int offset = scr ? scr->scroll_offset : 0;
     int total = scr ? scr->total_count : 0;
     int visible = scr ? scr->visible_count : 0;
@@ -2274,7 +2274,7 @@ static const PowerlineGlyphs PL_NERD = {
 
 void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
     const W_LogViewer* d = (const W_LogViewer*)ecs_get_id(
-        world, self, W_LogViewer_ensure());
+        world, self, W_LogViewerID);
     if (!d || d->entry_count <= 0 || !d->entries) {
         /* Empty state: render placeholder */
         const Widget_Theme* t0 = Widget_get_theme();
@@ -2319,9 +2319,9 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
 
     /* Get mutable state components */
     W_LogViewerState* state = (W_LogViewerState*)ecs_get_mut_id(
-        world, self, W_LogViewerState_ensure());
+        world, self, W_LogViewerStateID);
     W_Scrollable* scroll = (W_Scrollable*)ecs_get_mut_id(
-        world, self, W_Scrollable_ensure());
+        world, self, W_ScrollableID);
     if (!state || !scroll) return;
 
     /* One-time init of LogViewerState */
@@ -2568,14 +2568,14 @@ void w_log_viewer_layout(struct ecs_world_t* world, cels_entity_t self) {
     }
 
     /* Write back modified state */
-    ecs_set_id(world, self, W_LogViewerState_ensure(),
+    ecs_set_id(world, self, W_LogViewerStateID,
                sizeof(W_LogViewerState), state);
-    ecs_set_id(world, self, W_Scrollable_ensure(),
+    ecs_set_id(world, self, W_ScrollableID,
                sizeof(W_Scrollable), scroll);
 }
 
 void w_powerline_layout(struct ecs_world_t* world, cels_entity_t self) {
-    const W_Powerline* d = (const W_Powerline*)ecs_get_id(world, self, W_Powerline_ensure());
+    const W_Powerline* d = (const W_Powerline*)ecs_get_id(world, self, W_PowerlineID);
     if (!d || d->segment_count <= 0 || !d->segments) return;
 
     const PowerlineGlyphs* gl = Widget_powerline_glyphs_enabled() ? &PL_NERD : &PL_ASCII;

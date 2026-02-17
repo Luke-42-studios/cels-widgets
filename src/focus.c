@@ -39,13 +39,13 @@ static CELS_Input s_prev_input = {0};
  * ============================================================================ */
 
 void widgets_nav_scope_push(cels_entity_t scope_entity) {
-    W_NavigationState_ensure();
+    CEL_Register(W_NavigationState);
     W_NavigationState.active_scope = scope_entity;
     W_NavigationState.scope_depth++;
 }
 
 void widgets_nav_scope_pop(void) {
-    W_NavigationState_ensure();
+    CEL_Register(W_NavigationState);
     if (W_NavigationState.scope_depth > 0) {
         W_NavigationState.scope_depth--;
     }
@@ -55,7 +55,7 @@ void widgets_nav_scope_pop(void) {
 }
 
 cels_entity_t widgets_nav_scope_active(void) {
-    W_NavigationState_ensure();
+    CEL_Register(W_NavigationState);
     return W_NavigationState.active_scope;
 }
 
@@ -71,11 +71,11 @@ cels_entity_t widgets_nav_scope_active(void) {
 #define MAX_NAV_CHILDREN 64
 
 static void process_navigation_groups(ecs_world_t* world, const CELS_Input* input) {
-    W_NavigationScope_ensure();
-    W_Selectable_ensure();
-    W_InteractState_ensure();
-    W_Button_ensure();
-    W_Collapsible_ensure();
+    CEL_Register(W_NavigationScope);
+    CEL_Register(W_Selectable);
+    CEL_Register(W_InteractState);
+    CEL_Register(W_Button);
+    CEL_Register(W_Collapsible);
 
     /* Query all entities with W_NavigationScope */
     ecs_query_t* q = ecs_query(world, {
@@ -262,8 +262,8 @@ static void process_split_pane_navigation(ecs_world_t* world, const CELS_Input* 
     if (input->raw_key < CELS_KEY_CTRL_UP || input->raw_key > CELS_KEY_CTRL_LEFT) return;
     if (s_prev_input.has_raw_key && s_prev_input.raw_key == input->raw_key) return;
 
-    W_SplitPane_ensure();
-    W_NavigationScope_ensure();
+    CEL_Register(W_SplitPane);
+    CEL_Register(W_NavigationScope);
 
     /* Query all W_SplitPane entities */
     ecs_query_t* q = ecs_query(world, {
@@ -304,7 +304,7 @@ static void process_split_pane_navigation(ecs_world_t* world, const CELS_Input* 
             if (pane_children[0] == 0 || pane_children[1] == 0) continue;
 
             /* Find which pane has the currently active NavigationScope */
-            W_NavigationState_ensure();
+            CEL_Register(W_NavigationState);
             ecs_entity_t active_scope = W_NavigationState.active_scope;
 
             int current_pane = -1;
@@ -359,9 +359,9 @@ static void process_split_pane_navigation(ecs_world_t* world, const CELS_Input* 
  * ============================================================================ */
 
 static void process_scrollable_navigation(ecs_world_t* world, const CELS_Input* input) {
-    W_ScrollContainer_ensure();
-    W_Scrollable_ensure();
-    W_NavigationScope_ensure();
+    CEL_Register(W_ScrollContainer);
+    CEL_Register(W_Scrollable);
+    CEL_Register(W_NavigationScope);
 
     ecs_query_t* q = ecs_query(world, {
         .terms = {{ .id = W_ScrollContainerID }}
@@ -437,7 +437,7 @@ static void process_scrollable_navigation(ecs_world_t* world, const CELS_Input* 
  * ============================================================================ */
 
 static void process_modal_overlay(ecs_world_t* world, const CELS_Input* input) {
-    W_Modal_ensure();
+    CEL_Register(W_Modal);
 
     /* Edge-detect Escape */
     bool escape_pressed = (input->has_raw_key && input->raw_key == 27 &&
@@ -460,7 +460,7 @@ static void process_modal_overlay(ecs_world_t* world, const CELS_Input* input) {
                 world, qit.entities[e], W_ModalID);
             if (m && m->visible) {
                 const W_OverlayState* os = (const W_OverlayState*)ecs_get_id(
-                    world, qit.entities[e], W_OverlayState_ensure());
+                    world, qit.entities[e], W_OverlayStateID);
                 int z = os ? os->z_index : 200;
                 if (z > top_z) {
                     top_z = z;
@@ -491,8 +491,8 @@ static void process_modal_overlay(ecs_world_t* world, const CELS_Input* input) {
 static cels_entity_t s_prev_focused_window = 0;
 
 static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) {
-    W_Window_ensure();
-    W_OverlayState_ensure();
+    CEL_Register(W_Window);
+    CEL_Register(W_OverlayState);
 
     /* --- Escape dismiss (after modals have had their chance) --- */
     bool escape_pressed = (input->has_raw_key && input->raw_key == 27 &&
@@ -556,7 +556,7 @@ static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) 
 
     /* --- Focus-to-raise z-order --- */
     /* Check if focus state changed to a window entity */
-    W_FocusState_ensure();
+    CEL_Register(W_FocusState);
 
     /* Re-query windows to find which one has focus */
     ecs_query_t* q2 = ecs_query(world, {
@@ -668,8 +668,8 @@ static ecs_entity_t s_drag_target = 0;
 static bool s_drag_moving = false;
 
 static bool process_window_dragging(ecs_world_t* world, const CELS_Input* input) {
-    W_Draggable_ensure();
-    W_Window_ensure();
+    CEL_Register(W_Draggable);
+    CEL_Register(W_Window);
 
     /* Query all entities that have BOTH W_Window and W_Draggable */
     ecs_query_t* q = ecs_query(world, {
@@ -791,7 +791,7 @@ static void focus_system_run(CELS_Iter* it) {
     const CELS_Input* input = cels_input_get(ctx);
     if (!input) return;
 
-    W_FocusState_ensure();
+    CEL_Register(W_FocusState);
     W_FocusState.focus_count = count;
 
     /* Tab navigation for focus ring (only when focusable entities exist) */
@@ -843,23 +843,23 @@ void widgets_focus_system_register(void) {
     if (s_focus_registered) return;
     s_focus_registered = true;
 
-    W_Focusable_ensure();
-    W_FocusState_ensure();
-    W_NavigationState_ensure();
-    W_NavigationScope_ensure();
-    W_Selectable_ensure();
-    W_InteractState_ensure();
-    W_Collapsible_ensure();
-    W_SplitPane_ensure();
-    W_ScrollContainer_ensure();
-    W_Window_ensure();
-    W_Modal_ensure();
-    W_OverlayState_ensure();
-    W_Draggable_ensure();
+    CEL_Register(W_Focusable);
+    CEL_Register(W_FocusState);
+    CEL_Register(W_NavigationState);
+    CEL_Register(W_NavigationScope);
+    CEL_Register(W_Selectable);
+    CEL_Register(W_InteractState);
+    CEL_Register(W_Collapsible);
+    CEL_Register(W_SplitPane);
+    CEL_Register(W_ScrollContainer);
+    CEL_Register(W_Window);
+    CEL_Register(W_Modal);
+    CEL_Register(W_OverlayState);
+    CEL_Register(W_Draggable);
 
     /* Text input components (for active detection) */
-    W_TextInputBuffer_ensure();
-    W_TextInput_ensure();
+    CEL_Register(W_TextInputBuffer);
+    CEL_Register(W_TextInput);
 
     /* Register quit guard so 'q' passes through when text input is active */
     tui_input_set_quit_guard(s_text_input_quit_guard);

@@ -86,10 +86,10 @@ static void toast_timer_run(CELS_Iter* it) {
 
 void text_input_system_run(ecs_world_t* world, const CELS_Input* input,
                            const CELS_Input* prev_input) {
-    W_TextInput_ensure();
-    W_TextInputBuffer_ensure();
-    W_Selectable_ensure();
-    W_InteractState_ensure();
+    CEL_Register(W_TextInput);
+    CEL_Register(W_TextInputBuffer);
+    CEL_Register(W_Selectable);
+    CEL_Register(W_InteractState);
 
     /* Query all entities with both W_TextInput and W_TextInputBuffer */
     ecs_query_t* q = ecs_query(world, {
@@ -257,9 +257,9 @@ void text_input_system_run(ecs_world_t* world, const CELS_Input* input,
  * ============================================================================ */
 
 bool text_input_is_active(ecs_world_t* world) {
-    W_TextInputBuffer_ensure();
-    W_Selectable_ensure();
-    W_InteractState_ensure();
+    CEL_Register(W_TextInputBuffer);
+    CEL_Register(W_Selectable);
+    CEL_Register(W_InteractState);
 
     ecs_query_t* q = ecs_query(world, {
         .terms = {{ .id = W_TextInputBufferID }}
@@ -294,12 +294,12 @@ void widgets_behavioral_systems_register(void) {
     if (s_behavioral_registered) return;
     s_behavioral_registered = true;
 
-    W_RangeValueF_ensure();
-    W_RangeValueI_ensure();
-    W_Scrollable_ensure();
-    W_Toast_ensure();
-    W_TextInput_ensure();
-    W_TextInputBuffer_ensure();
+    CEL_Register(W_RangeValueF);
+    CEL_Register(W_RangeValueI);
+    CEL_Register(W_Scrollable);
+    CEL_Register(W_Toast);
+    CEL_Register(W_TextInput);
+    CEL_Register(W_TextInputBuffer);
 
     cels_entity_t range_f_comps[] = { W_RangeValueFID };
     cels_system_declare("W_RangeClampF", CELS_Phase_OnUpdate,
