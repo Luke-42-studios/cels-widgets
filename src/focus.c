@@ -1,4 +1,20 @@
 /*
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
  * CELS Widgets - Focus manager implementation
  *
  * Tracks which widget entity has keyboard focus and handles navigation.
@@ -39,13 +55,13 @@ static CELS_Input s_prev_input = {0};
  * ============================================================================ */
 
 void widgets_nav_scope_push(cels_entity_t scope_entity) {
-    CEL_Register(W_NavigationState);
+    cel_register(W_NavigationState);
     W_NavigationState.active_scope = scope_entity;
     W_NavigationState.scope_depth++;
 }
 
 void widgets_nav_scope_pop(void) {
-    CEL_Register(W_NavigationState);
+    cel_register(W_NavigationState);
     if (W_NavigationState.scope_depth > 0) {
         W_NavigationState.scope_depth--;
     }
@@ -55,7 +71,7 @@ void widgets_nav_scope_pop(void) {
 }
 
 cels_entity_t widgets_nav_scope_active(void) {
-    CEL_Register(W_NavigationState);
+    cel_register(W_NavigationState);
     return W_NavigationState.active_scope;
 }
 
@@ -71,15 +87,15 @@ cels_entity_t widgets_nav_scope_active(void) {
 #define MAX_NAV_CHILDREN 64
 
 static void process_navigation_groups(ecs_world_t* world, const CELS_Input* input) {
-    CEL_Register(W_NavigationScope);
-    CEL_Register(W_Selectable);
-    CEL_Register(W_InteractState);
-    CEL_Register(W_Button);
-    CEL_Register(W_Collapsible);
+    cel_register(W_NavigationScope);
+    cel_register(W_Selectable);
+    cel_register(W_InteractState);
+    cel_register(W_Button);
+    cel_register(W_Collapsible);
 
     /* Query all entities with W_NavigationScope */
     ecs_query_t* q = ecs_query(world, {
-        .terms = {{ .id = W_NavigationScopeID }}
+        .terms = {{ .id = W_NavigationScope_id }}
     });
     if (!q) return;
 
@@ -89,7 +105,7 @@ static void process_navigation_groups(ecs_world_t* world, const CELS_Input* inpu
             ecs_entity_t nav_entity = qit.entities[e];
 
             W_NavigationScope* scope = (W_NavigationScope*)ecs_get_mut_id(
-                world, nav_entity, W_NavigationScopeID);
+                world, nav_entity, W_NavigationScope_id);
             if (!scope) continue;
 
             /* Collect children that have W_Selectable */
@@ -101,7 +117,7 @@ static void process_navigation_groups(ecs_world_t* world, const CELS_Input* inpu
                 for (int c = 0; c < cit.count; c++) {
                     ecs_entity_t child = cit.entities[c];
                     /* Only include children that have W_Selectable */
-                    if (ecs_has_id(world, child, W_SelectableID) &&
+                    if (ecs_has_id(world, child, W_Selectable_id) &&
                         child_count < MAX_NAV_CHILDREN) {
                         children[child_count++] = child;
                     }
@@ -159,16 +175,16 @@ static void process_navigation_groups(ecs_world_t* world, const CELS_Input* inpu
 
                 /* Set W_Selectable.selected */
                 W_Selectable sel_val = { .selected = is_selected };
-                ecs_set_id(world, child, W_SelectableID,
+                ecs_set_id(world, child, W_Selectable_id,
                            sizeof(W_Selectable), &sel_val);
 
                 /* Set W_InteractState.selected (preserve other fields) */
                 const W_InteractState* ist = (const W_InteractState*)ecs_get_id(
-                    world, child, W_InteractStateID);
+                    world, child, W_InteractState_id);
                 if (ist) {
                     W_InteractState new_ist = *ist;
                     new_ist.selected = is_selected;
-                    ecs_set_id(world, child, W_InteractStateID,
+                    ecs_set_id(world, child, W_InteractState_id,
                                sizeof(W_InteractState), &new_ist);
                 }
             }
@@ -180,18 +196,18 @@ static void process_navigation_groups(ecs_world_t* world, const CELS_Input* inpu
                 scope->selected_index < child_count) {
                 ecs_entity_t selected_child = children[scope->selected_index];
                 const W_Button* btn = (const W_Button*)ecs_get_id(
-                    world, selected_child, W_ButtonID);
+                    world, selected_child, W_Button_id);
                 if (btn && btn->on_press) {
                     btn->on_press();
                 }
 
                 /* Collapsible toggle: Enter/Space toggles collapsed state */
-                if (ecs_has_id(world, selected_child, W_CollapsibleID)) {
+                if (ecs_has_id(world, selected_child, W_Collapsible_id)) {
                     W_Collapsible* col = (W_Collapsible*)ecs_get_mut_id(
-                        world, selected_child, W_CollapsibleID);
+                        world, selected_child, W_Collapsible_id);
                     if (col) {
                         col->collapsed = !col->collapsed;
-                        ecs_set_id(world, selected_child, W_CollapsibleID,
+                        ecs_set_id(world, selected_child, W_Collapsible_id,
                                    sizeof(W_Collapsible), col);
                     }
                 }
@@ -234,7 +250,7 @@ static ecs_entity_t find_nav_scope_under(ecs_world_t* world, ecs_entity_t parent
     ecs_iter_t it = ecs_children(world, parent);
     while (ecs_children_next(&it)) {
         for (int i = 0; i < it.count; i++) {
-            if (ecs_has_id(world, it.entities[i], W_NavigationScopeID)) {
+            if (ecs_has_id(world, it.entities[i], W_NavigationScope_id)) {
                 return it.entities[i];
             }
         }
@@ -246,7 +262,7 @@ static ecs_entity_t find_nav_scope_under(ecs_world_t* world, ecs_entity_t parent
             ecs_iter_t it3 = ecs_children(world, it2.entities[i]);
             while (ecs_children_next(&it3)) {
                 for (int j = 0; j < it3.count; j++) {
-                    if (ecs_has_id(world, it3.entities[j], W_NavigationScopeID)) {
+                    if (ecs_has_id(world, it3.entities[j], W_NavigationScope_id)) {
                         return it3.entities[j];
                     }
                 }
@@ -262,12 +278,12 @@ static void process_split_pane_navigation(ecs_world_t* world, const CELS_Input* 
     if (input->raw_key < CELS_KEY_CTRL_UP || input->raw_key > CELS_KEY_CTRL_LEFT) return;
     if (s_prev_input.has_raw_key && s_prev_input.raw_key == input->raw_key) return;
 
-    CEL_Register(W_SplitPane);
-    CEL_Register(W_NavigationScope);
+    cel_register(W_SplitPane);
+    cel_register(W_NavigationScope);
 
     /* Query all W_SplitPane entities */
     ecs_query_t* q = ecs_query(world, {
-        .terms = {{ .id = W_SplitPaneID }}
+        .terms = {{ .id = W_SplitPane_id }}
     });
     if (!q) return;
 
@@ -276,7 +292,7 @@ static void process_split_pane_navigation(ecs_world_t* world, const CELS_Input* 
         for (int e = 0; e < qit.count; e++) {
             ecs_entity_t split_entity = qit.entities[e];
             const W_SplitPane* split = (const W_SplitPane*)ecs_get_id(
-                world, split_entity, W_SplitPaneID);
+                world, split_entity, W_SplitPane_id);
             if (!split) continue;
 
             /* Filter Ctrl+Arrow by split direction:
@@ -304,7 +320,7 @@ static void process_split_pane_navigation(ecs_world_t* world, const CELS_Input* 
             if (pane_children[0] == 0 || pane_children[1] == 0) continue;
 
             /* Find which pane has the currently active NavigationScope */
-            CEL_Register(W_NavigationState);
+            cel_register(W_NavigationState);
             ecs_entity_t active_scope = W_NavigationState.active_scope;
 
             int current_pane = -1;
@@ -340,7 +356,7 @@ static void process_split_pane_navigation(ecs_world_t* world, const CELS_Input* 
             /* Set selected_index to 0 in the target scope and ensure
              * at least the first child is selected */
             W_NavigationScope* target_scope = (W_NavigationScope*)ecs_get_mut_id(
-                world, target_nav, W_NavigationScopeID);
+                world, target_nav, W_NavigationScope_id);
             if (target_scope) {
                 target_scope->selected_index = 0;
             }
@@ -359,12 +375,12 @@ static void process_split_pane_navigation(ecs_world_t* world, const CELS_Input* 
  * ============================================================================ */
 
 static void process_scrollable_navigation(ecs_world_t* world, const CELS_Input* input) {
-    CEL_Register(W_ScrollContainer);
-    CEL_Register(W_Scrollable);
-    CEL_Register(W_NavigationScope);
+    cel_register(W_ScrollContainer);
+    cel_register(W_Scrollable);
+    cel_register(W_NavigationScope);
 
     ecs_query_t* q = ecs_query(world, {
-        .terms = {{ .id = W_ScrollContainerID }}
+        .terms = {{ .id = W_ScrollContainer_id }}
     });
     if (!q) return;
 
@@ -380,11 +396,11 @@ static void process_scrollable_navigation(ecs_world_t* world, const CELS_Input* 
             ecs_entity_t sc_entity = qit.entities[e];
 
             W_Scrollable* scr = (W_Scrollable*)ecs_get_mut_id(
-                world, sc_entity, W_ScrollableID);
+                world, sc_entity, W_Scrollable_id);
             if (!scr || scr->visible_count <= 0) continue;
 
             const W_ScrollContainer* sc = (const W_ScrollContainer*)ecs_get_id(
-                world, sc_entity, W_ScrollContainerID);
+                world, sc_entity, W_ScrollContainer_id);
             (void)sc;
 
             int visible = scr->visible_count;
@@ -395,7 +411,7 @@ static void process_scrollable_navigation(ecs_world_t* world, const CELS_Input* 
             ecs_entity_t nav = find_nav_scope_under(world, sc_entity);
             if (nav != 0) {
                 const W_NavigationScope* scope = (const W_NavigationScope*)ecs_get_id(
-                    world, nav, W_NavigationScopeID);
+                    world, nav, W_NavigationScope_id);
                 if (scope) {
                     int sel = scope->selected_index;
                     /* Scroll up to show selected */
@@ -424,7 +440,7 @@ static void process_scrollable_navigation(ecs_world_t* world, const CELS_Input* 
             }
 
             /* Write back (ScrollClampSystem enforces bounds at PostUpdate) */
-            ecs_set_id(world, sc_entity, W_ScrollableID,
+            ecs_set_id(world, sc_entity, W_Scrollable_id,
                        sizeof(W_Scrollable), scr);
         }
     }
@@ -437,7 +453,7 @@ static void process_scrollable_navigation(ecs_world_t* world, const CELS_Input* 
  * ============================================================================ */
 
 static void process_modal_overlay(ecs_world_t* world, const CELS_Input* input) {
-    CEL_Register(W_Modal);
+    cel_register(W_Modal);
 
     /* Edge-detect Escape */
     bool escape_pressed = (input->has_raw_key && input->raw_key == 27 &&
@@ -446,7 +462,7 @@ static void process_modal_overlay(ecs_world_t* world, const CELS_Input* input) {
 
     /* Find visible modal with highest z_index */
     ecs_query_t* q = ecs_query(world, {
-        .terms = {{ .id = W_ModalID }}
+        .terms = {{ .id = W_Modal_id }}
     });
     if (!q) return;
 
@@ -457,10 +473,10 @@ static void process_modal_overlay(ecs_world_t* world, const CELS_Input* input) {
     while (ecs_query_next(&qit)) {
         for (int e = 0; e < qit.count; e++) {
             const W_Modal* m = (const W_Modal*)ecs_get_id(
-                world, qit.entities[e], W_ModalID);
+                world, qit.entities[e], W_Modal_id);
             if (m && m->visible) {
                 const W_OverlayState* os = (const W_OverlayState*)ecs_get_id(
-                    world, qit.entities[e], W_OverlayStateID);
+                    world, qit.entities[e], W_OverlayState_id);
                 int z = os ? os->z_index : 200;
                 if (z > top_z) {
                     top_z = z;
@@ -472,7 +488,7 @@ static void process_modal_overlay(ecs_world_t* world, const CELS_Input* input) {
     ecs_query_fini(q);
 
     if (top_modal != 0) {
-        const W_Modal* m = (const W_Modal*)ecs_get_id(world, top_modal, W_ModalID);
+        const W_Modal* m = (const W_Modal*)ecs_get_id(world, top_modal, W_Modal_id);
         if (m && m->on_dismiss) {
             m->on_dismiss();
         }
@@ -491,8 +507,8 @@ static void process_modal_overlay(ecs_world_t* world, const CELS_Input* input) {
 static cels_entity_t s_prev_focused_window = 0;
 
 static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) {
-    CEL_Register(W_Window);
-    CEL_Register(W_OverlayState);
+    cel_register(W_Window);
+    cel_register(W_OverlayState);
 
     /* --- Escape dismiss (after modals have had their chance) --- */
     bool escape_pressed = (input->has_raw_key && input->raw_key == 27 &&
@@ -502,14 +518,14 @@ static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) 
     bool modal_visible = false;
     {
         ecs_query_t* mq = ecs_query(world, {
-            .terms = {{ .id = W_ModalID }}
+            .terms = {{ .id = W_Modal_id }}
         });
         if (mq) {
             ecs_iter_t mit = ecs_query_iter(world, mq);
             while (ecs_query_next(&mit)) {
                 for (int e = 0; e < mit.count; e++) {
                     const W_Modal* m = (const W_Modal*)ecs_get_id(
-                        world, mit.entities[e], W_ModalID);
+                        world, mit.entities[e], W_Modal_id);
                     if (m && m->visible) { modal_visible = true; break; }
                 }
                 if (modal_visible) break;
@@ -520,7 +536,7 @@ static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) 
 
     /* Query all window entities */
     ecs_query_t* q = ecs_query(world, {
-        .terms = {{ .id = W_WindowID }}
+        .terms = {{ .id = W_Window_id }}
     });
     if (!q) return;
 
@@ -533,7 +549,7 @@ static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) 
     while (ecs_query_next(&qit)) {
         for (int e = 0; e < qit.count; e++) {
             const W_Window* w = (const W_Window*)ecs_get_id(
-                world, qit.entities[e], W_WindowID);
+                world, qit.entities[e], W_Window_id);
             if (w && w->visible) {
                 if (w->z_order > max_z_order) max_z_order = w->z_order;
                 if (w->z_order > top_z) {
@@ -547,7 +563,7 @@ static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) 
 
     /* Escape: dismiss topmost visible window (only if no modal is visible) */
     if (escape_pressed && !modal_visible && top_window != 0) {
-        const W_Window* w = (const W_Window*)ecs_get_id(world, top_window, W_WindowID);
+        const W_Window* w = (const W_Window*)ecs_get_id(world, top_window, W_Window_id);
         if (w && w->on_close) {
             w->on_close();
         }
@@ -556,11 +572,11 @@ static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) 
 
     /* --- Focus-to-raise z-order --- */
     /* Check if focus state changed to a window entity */
-    CEL_Register(W_FocusState);
+    cel_register(W_FocusState);
 
     /* Re-query windows to find which one has focus */
     ecs_query_t* q2 = ecs_query(world, {
-        .terms = {{ .id = W_WindowID }}
+        .terms = {{ .id = W_Window_id }}
     });
     if (!q2) return;
 
@@ -569,7 +585,7 @@ static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) 
     while (ecs_query_next(&qit2)) {
         for (int e = 0; e < qit2.count; e++) {
             ecs_entity_t we = qit2.entities[e];
-            const W_Window* w = (const W_Window*)ecs_get_id(world, we, W_WindowID);
+            const W_Window* w = (const W_Window*)ecs_get_id(world, we, W_Window_id);
             if (!w || !w->visible) continue;
 
             /* Check if this window entity (which has W_Focusable) has focus */
@@ -601,7 +617,7 @@ static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) 
         if (new_z > 49) {
             /* Re-query and subtract minimum z_order from all windows */
             ecs_query_t* q3 = ecs_query(world, {
-                .terms = {{ .id = W_WindowID }}
+                .terms = {{ .id = W_Window_id }}
             });
             if (q3) {
                 int min_z = new_z;
@@ -609,7 +625,7 @@ static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) 
                 while (ecs_query_next(&qit3)) {
                     for (int e = 0; e < qit3.count; e++) {
                         const W_Window* w = (const W_Window*)ecs_get_id(
-                            world, qit3.entities[e], W_WindowID);
+                            world, qit3.entities[e], W_Window_id);
                         if (w && w->visible && w->z_order < min_z) {
                             min_z = w->z_order;
                         }
@@ -621,14 +637,14 @@ static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) 
                 while (ecs_query_next(&qit4)) {
                     for (int e = 0; e < qit4.count; e++) {
                         W_Window* w = (W_Window*)ecs_get_mut_id(
-                            world, qit4.entities[e], W_WindowID);
+                            world, qit4.entities[e], W_Window_id);
                         if (w && w->visible) {
                             w->z_order -= min_z;
                             /* Update overlay state */
                             W_OverlayState os = { .visible = true,
                                 .z_index = 150 + w->z_order, .modal = true };
                             ecs_set_id(world, qit4.entities[e],
-                                       W_OverlayStateID, sizeof(W_OverlayState), &os);
+                                       W_OverlayState_id, sizeof(W_OverlayState), &os);
                         }
                     }
                 }
@@ -638,13 +654,13 @@ static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) 
         }
 
         /* Set focused window's z_order to new top */
-        W_Window* w = (W_Window*)ecs_get_mut_id(world, focused_window, W_WindowID);
+        W_Window* w = (W_Window*)ecs_get_mut_id(world, focused_window, W_Window_id);
         if (w) {
             w->z_order = new_z;
             W_OverlayState os = { .visible = true,
                 .z_index = 150 + new_z, .modal = true };
             ecs_set_id(world, focused_window,
-                       W_OverlayStateID, sizeof(W_OverlayState), &os);
+                       W_OverlayState_id, sizeof(W_OverlayState), &os);
         }
     }
     s_prev_focused_window = focused_window;
@@ -660,7 +676,7 @@ static void process_window_overlay(ecs_world_t* world, const CELS_Input* input) 
  * ============================================================================ */
 
 /* Drag state lives here (not in W_Draggable component) because compositions
- * re-run CEL_Has(W_Draggable) each frame, which zero-inits the struct.
+ * re-run cel_has(W_Draggable) each frame, which zero-inits the struct.
  * The component is only a tag marking the entity as draggable; the actual
  * moving flag persists in these statics across frames. We write back to
  * the component each frame so layouts.c can read it for visual feedback. */
@@ -668,12 +684,12 @@ static ecs_entity_t s_drag_target = 0;
 static bool s_drag_moving = false;
 
 static bool process_window_dragging(ecs_world_t* world, const CELS_Input* input) {
-    CEL_Register(W_Draggable);
-    CEL_Register(W_Window);
+    cel_register(W_Draggable);
+    cel_register(W_Window);
 
     /* Query all entities that have BOTH W_Window and W_Draggable */
     ecs_query_t* q = ecs_query(world, {
-        .terms = {{ .id = W_WindowID }, { .id = W_DraggableID }}
+        .terms = {{ .id = W_Window_id }, { .id = W_Draggable_id }}
     });
     if (!q) return false;
 
@@ -684,7 +700,7 @@ static bool process_window_dragging(ecs_world_t* world, const CELS_Input* input)
     while (ecs_query_next(&qit)) {
         for (int e = 0; e < qit.count; e++) {
             const W_Window* w = (const W_Window*)ecs_get_id(
-                world, qit.entities[e], W_WindowID);
+                world, qit.entities[e], W_Window_id);
             if (w && w->visible && w->z_order > top_z) {
                 top_z = w->z_order;
                 target = qit.entities[e];
@@ -711,7 +727,7 @@ static bool process_window_dragging(ecs_world_t* world, const CELS_Input* input)
     if (m_pressed) {
         s_drag_moving = !s_drag_moving;
         W_Draggable upd = { .moving = s_drag_moving };
-        ecs_set_id(world, target, W_DraggableID, sizeof(W_Draggable), &upd);
+        ecs_set_id(world, target, W_Draggable_id, sizeof(W_Draggable), &upd);
         return s_drag_moving;
     }
 
@@ -719,7 +735,7 @@ static bool process_window_dragging(ecs_world_t* world, const CELS_Input* input)
 
     /* Write moving=true for layout visual feedback (composition reset it) */
     W_Draggable upd = { .moving = true };
-    ecs_set_id(world, target, W_DraggableID, sizeof(W_Draggable), &upd);
+    ecs_set_id(world, target, W_Draggable_id, sizeof(W_Draggable), &upd);
 
     /* Exit move mode on Enter or Escape (edge-detected) */
     bool exit_accept = (input->button_accept && !s_prev_input.button_accept);
@@ -727,12 +743,12 @@ static bool process_window_dragging(ecs_world_t* world, const CELS_Input* input)
     if (exit_accept || exit_cancel) {
         s_drag_moving = false;
         W_Draggable off = { .moving = false };
-        ecs_set_id(world, target, W_DraggableID, sizeof(W_Draggable), &off);
+        ecs_set_id(world, target, W_Draggable_id, sizeof(W_Draggable), &off);
         return true;
     }
 
     /* Arrow keys: move window 1 cell per press (edge-detected) */
-    W_Window* w = (W_Window*)ecs_get_mut_id(world, target, W_WindowID);
+    W_Window* w = (W_Window*)ecs_get_mut_id(world, target, W_Window_id);
     if (!w) return true;
     bool moved = false;
 
@@ -759,7 +775,7 @@ static bool process_window_dragging(ecs_world_t* world, const CELS_Input* input)
     if (w->y > max_y) w->y = max_y;
 
     if (moved) {
-        ecs_set_id(world, target, W_WindowID, sizeof(W_Window), w);
+        ecs_set_id(world, target, W_Window_id, sizeof(W_Window), w);
     }
     return true;  /* In move mode — always consume input */
 }
@@ -791,7 +807,7 @@ static void focus_system_run(CELS_Iter* it) {
     const CELS_Input* input = cels_input_get(ctx);
     if (!input) return;
 
-    CEL_Register(W_FocusState);
+    cel_register(W_FocusState);
     W_FocusState.focus_count = count;
 
     /* Tab navigation for focus ring (only when focusable entities exist) */
@@ -843,28 +859,28 @@ void widgets_focus_system_register(void) {
     if (s_focus_registered) return;
     s_focus_registered = true;
 
-    CEL_Register(W_Focusable);
-    CEL_Register(W_FocusState);
-    CEL_Register(W_NavigationState);
-    CEL_Register(W_NavigationScope);
-    CEL_Register(W_Selectable);
-    CEL_Register(W_InteractState);
-    CEL_Register(W_Collapsible);
-    CEL_Register(W_SplitPane);
-    CEL_Register(W_ScrollContainer);
-    CEL_Register(W_Window);
-    CEL_Register(W_Modal);
-    CEL_Register(W_OverlayState);
-    CEL_Register(W_Draggable);
+    cel_register(W_Focusable);
+    cel_register(W_FocusState);
+    cel_register(W_NavigationState);
+    cel_register(W_NavigationScope);
+    cel_register(W_Selectable);
+    cel_register(W_InteractState);
+    cel_register(W_Collapsible);
+    cel_register(W_SplitPane);
+    cel_register(W_ScrollContainer);
+    cel_register(W_Window);
+    cel_register(W_Modal);
+    cel_register(W_OverlayState);
+    cel_register(W_Draggable);
 
     /* Text input components (for active detection) */
-    CEL_Register(W_TextInputBuffer);
-    CEL_Register(W_TextInput);
+    cel_register(W_TextInputBuffer);
+    cel_register(W_TextInput);
 
     /* Register quit guard so 'q' passes through when text input is active */
     tui_input_set_quit_guard(s_text_input_quit_guard);
 
-    cels_entity_t components[] = { W_FocusableID };
+    cels_entity_t components[] = { W_Focusable_id };
     cels_system_declare("W_FocusSystem", CELS_Phase_OnUpdate,
                         focus_system_run, components, 1);
 }

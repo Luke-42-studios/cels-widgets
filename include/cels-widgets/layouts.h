@@ -1,10 +1,26 @@
 /*
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
  * CELS Widgets - Clay Layout Function Declarations
  *
  * Each widget has a corresponding Clay layout function that reads the
  * widget's component data and emits Clay elements. These functions are
  * called per-frame by the Clay layout system when attached to entities
- * via CEL_Has(ClayUI, .layout_fn = w_button_layout).
+ * via cel_has(ClayUI, .layout_fn = w_button_layout).
  *
  * Layout functions are pure declarations: read component data, emit
  * CLAY() calls, no side effects. The clay_ncurses_renderer handles
@@ -12,7 +28,7 @@
  *
  * Usage:
  *   #include <cels-widgets/layouts.h>
- *   CEL_Has(ClayUI, .layout_fn = w_button_layout);
+ *   cel_has(ClayUI, .layout_fn = w_button_layout);
  */
 
 #ifndef CELS_WIDGETS_LAYOUTS_H

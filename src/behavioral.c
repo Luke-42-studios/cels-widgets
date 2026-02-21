@@ -1,4 +1,20 @@
 /*
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
  * CELS Widgets - Behavioral Systems
  *
  * Generic ECS systems that operate on behavioral components.
@@ -23,7 +39,7 @@
 
 static void range_clamp_f_run(CELS_Iter* it) {
     int count = cels_iter_count(it);
-    W_RangeValueF* ranges = (W_RangeValueF*)cels_iter_column(it, W_RangeValueFID, sizeof(W_RangeValueF));
+    W_RangeValueF* ranges = (W_RangeValueF*)cels_iter_column(it, W_RangeValueF_id, sizeof(W_RangeValueF));
     if (!ranges) return;
     for (int i = 0; i < count; i++) {
         if (ranges[i].value < ranges[i].min) ranges[i].value = ranges[i].min;
@@ -33,7 +49,7 @@ static void range_clamp_f_run(CELS_Iter* it) {
 
 static void range_clamp_i_run(CELS_Iter* it) {
     int count = cels_iter_count(it);
-    W_RangeValueI* ranges = (W_RangeValueI*)cels_iter_column(it, W_RangeValueIID, sizeof(W_RangeValueI));
+    W_RangeValueI* ranges = (W_RangeValueI*)cels_iter_column(it, W_RangeValueI_id, sizeof(W_RangeValueI));
     if (!ranges) return;
     for (int i = 0; i < count; i++) {
         if (ranges[i].value < ranges[i].min) ranges[i].value = ranges[i].min;
@@ -43,7 +59,7 @@ static void range_clamp_i_run(CELS_Iter* it) {
 
 static void scroll_clamp_run(CELS_Iter* it) {
     int count = cels_iter_count(it);
-    W_Scrollable* scrolls = (W_Scrollable*)cels_iter_column(it, W_ScrollableID, sizeof(W_Scrollable));
+    W_Scrollable* scrolls = (W_Scrollable*)cels_iter_column(it, W_Scrollable_id, sizeof(W_Scrollable));
     if (!scrolls) return;
     for (int i = 0; i < count; i++) {
         int max_offset = scrolls[i].total_count - scrolls[i].visible_count;
@@ -56,7 +72,7 @@ static void scroll_clamp_run(CELS_Iter* it) {
 /* W_ToastTimer: auto-dismiss timer for toast notifications */
 static void toast_timer_run(CELS_Iter* it) {
     int count = cels_iter_count(it);
-    W_Toast* toasts = (W_Toast*)cels_iter_column(it, W_ToastID, sizeof(W_Toast));
+    W_Toast* toasts = (W_Toast*)cels_iter_column(it, W_Toast_id, sizeof(W_Toast));
     float dt = cels_iter_delta_time(it);
     if (!toasts) return;
     for (int i = 0; i < count; i++) {
@@ -86,14 +102,14 @@ static void toast_timer_run(CELS_Iter* it) {
 
 void text_input_system_run(ecs_world_t* world, const CELS_Input* input,
                            const CELS_Input* prev_input) {
-    CEL_Register(W_TextInput);
-    CEL_Register(W_TextInputBuffer);
-    CEL_Register(W_Selectable);
-    CEL_Register(W_InteractState);
+    cel_register(W_TextInput);
+    cel_register(W_TextInputBuffer);
+    cel_register(W_Selectable);
+    cel_register(W_InteractState);
 
     /* Query all entities with both W_TextInput and W_TextInputBuffer */
     ecs_query_t* q = ecs_query(world, {
-        .terms = {{ .id = W_TextInputID }, { .id = W_TextInputBufferID }}
+        .terms = {{ .id = W_TextInput_id }, { .id = W_TextInputBuffer_id }}
     });
     if (!q) return;
 
@@ -103,11 +119,11 @@ void text_input_system_run(ecs_world_t* world, const CELS_Input* input,
             ecs_entity_t entity = qit.entities[e];
 
             W_TextInputBuffer* buf = (W_TextInputBuffer*)ecs_get_mut_id(
-                world, entity, W_TextInputBufferID);
+                world, entity, W_TextInputBuffer_id);
             if (!buf) continue;
 
             const W_TextInput* cfg = (const W_TextInput*)ecs_get_id(
-                world, entity, W_TextInputID);
+                world, entity, W_TextInput_id);
             if (!cfg) continue;
 
             /* One-time init */
@@ -124,9 +140,9 @@ void text_input_system_run(ecs_world_t* world, const CELS_Input* input,
 
             /* Skip inactive: must be focused AND selected */
             const W_Selectable* sel = (const W_Selectable*)ecs_get_id(
-                world, entity, W_SelectableID);
+                world, entity, W_Selectable_id);
             const W_InteractState* ist = (const W_InteractState*)ecs_get_id(
-                world, entity, W_InteractStateID);
+                world, entity, W_InteractState_id);
             bool selected = sel ? sel->selected : false;
             bool focused = ist ? ist->focused : false;
             if (!selected || !focused) continue;
@@ -241,7 +257,7 @@ void text_input_system_run(ecs_world_t* world, const CELS_Input* input,
             if (buf->scroll_x < 0) buf->scroll_x = 0;
 
             /* Write back modified buffer */
-            ecs_set_id(world, entity, W_TextInputBufferID,
+            ecs_set_id(world, entity, W_TextInputBuffer_id,
                        sizeof(W_TextInputBuffer), buf);
         }
     }
@@ -257,12 +273,12 @@ void text_input_system_run(ecs_world_t* world, const CELS_Input* input,
  * ============================================================================ */
 
 bool text_input_is_active(ecs_world_t* world) {
-    CEL_Register(W_TextInputBuffer);
-    CEL_Register(W_Selectable);
-    CEL_Register(W_InteractState);
+    cel_register(W_TextInputBuffer);
+    cel_register(W_Selectable);
+    cel_register(W_InteractState);
 
     ecs_query_t* q = ecs_query(world, {
-        .terms = {{ .id = W_TextInputBufferID }}
+        .terms = {{ .id = W_TextInputBuffer_id }}
     });
     if (!q) return false;
 
@@ -272,9 +288,9 @@ bool text_input_is_active(ecs_world_t* world) {
         for (int e = 0; e < qit.count && !active; e++) {
             ecs_entity_t entity = qit.entities[e];
             const W_Selectable* sel = (const W_Selectable*)ecs_get_id(
-                world, entity, W_SelectableID);
+                world, entity, W_Selectable_id);
             const W_InteractState* ist = (const W_InteractState*)ecs_get_id(
-                world, entity, W_InteractStateID);
+                world, entity, W_InteractState_id);
             if ((sel && sel->selected) && (ist && ist->focused)) {
                 active = true;
             }
@@ -294,26 +310,26 @@ void widgets_behavioral_systems_register(void) {
     if (s_behavioral_registered) return;
     s_behavioral_registered = true;
 
-    CEL_Register(W_RangeValueF);
-    CEL_Register(W_RangeValueI);
-    CEL_Register(W_Scrollable);
-    CEL_Register(W_Toast);
-    CEL_Register(W_TextInput);
-    CEL_Register(W_TextInputBuffer);
+    cel_register(W_RangeValueF);
+    cel_register(W_RangeValueI);
+    cel_register(W_Scrollable);
+    cel_register(W_Toast);
+    cel_register(W_TextInput);
+    cel_register(W_TextInputBuffer);
 
-    cels_entity_t range_f_comps[] = { W_RangeValueFID };
+    cels_entity_t range_f_comps[] = { W_RangeValueF_id };
     cels_system_declare("W_RangeClampF", CELS_Phase_OnUpdate,
                         range_clamp_f_run, range_f_comps, 1);
 
-    cels_entity_t range_i_comps[] = { W_RangeValueIID };
+    cels_entity_t range_i_comps[] = { W_RangeValueI_id };
     cels_system_declare("W_RangeClampI", CELS_Phase_OnUpdate,
                         range_clamp_i_run, range_i_comps, 1);
 
-    cels_entity_t scroll_comps[] = { W_ScrollableID };
+    cels_entity_t scroll_comps[] = { W_Scrollable_id };
     cels_system_declare("W_ScrollClamp", CELS_Phase_OnUpdate,
                         scroll_clamp_run, scroll_comps, 1);
 
-    cels_entity_t toast_comps[] = { W_ToastID };
+    cels_entity_t toast_comps[] = { W_Toast_id };
     cels_system_declare("W_ToastTimer", CELS_Phase_OnUpdate,
                         toast_timer_run, toast_comps, 1);
 }

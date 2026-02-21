@@ -1,7 +1,23 @@
 /*
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
  * CELS Widgets - Widget component definitions with Clay layout integration
  *
- * Defines reusable UI widget components using CEL_Define. Each widget has:
+ * Defines reusable UI widget components using cel_component. Each widget has:
  *   1. Component definition (pure data, this file)
  *   2. Clay layout function (layouts.h / layouts.c)
  *   3. Composition macro (compositions.h)
@@ -46,27 +62,27 @@ extern "C" {
  * ============================================================================ */
 
 /* Text: simple text display with alignment */
-CEL_Define(W_Text, {
+cel_component(W_Text, {
     const char* text;       /* Text content */
     int align;              /* 0 = left, 1 = center, 2 = right */
     const Widget_TextStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Hint: dim hint text line */
-CEL_Define(W_Hint, {
+cel_component(W_Hint, {
     const char* text;       /* Hint text content */
     const Widget_HintStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Canvas: header box with centered title */
-CEL_Define(W_Canvas, {
+cel_component(W_Canvas, {
     const char* title;      /* Centered title text */
     int width;              /* Box width (0 = backend default) */
     const Widget_CanvasStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Info box: bordered box with title and content */
-CEL_Define(W_InfoBox, {
+cel_component(W_InfoBox, {
     const char* title;      /* Box title */
     const char* content;    /* Content text */
     bool border;            /* Draw border (default true) */
@@ -74,7 +90,7 @@ CEL_Define(W_InfoBox, {
 });
 
 /* Badge: styled tag/label with color */
-CEL_Define(W_Badge, {
+cel_component(W_Badge, {
     const char* text;       /* Badge text */
     unsigned char r, g, b;  /* Badge color (0-255) */
     const Widget_BadgeStyle* style; /* Visual overrides (NULL = defaults) */
@@ -82,7 +98,7 @@ CEL_Define(W_Badge, {
 
 /* TextArea: multi-line scrollable text
  * Note: W_Scrollable component attached for scroll state */
-CEL_Define(W_TextArea, {
+cel_component(W_TextArea, {
     const char* text;       /* Multi-line text content */
     int max_width;          /* Max width (0 = grow) */
     int max_height;         /* Max height (0 = grow) */
@@ -95,27 +111,27 @@ CEL_Define(W_TextArea, {
  * ============================================================================ */
 
 /* Button: selectable button with label (selection via W_Selectable component) */
-CEL_Define(W_Button, {
+cel_component(W_Button, {
     const char* label;      /* Button text */
     void (*on_press)(void); /* Callback when activated (Enter/Space) */
     const Widget_ButtonStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Slider: labeled value slider (range via W_RangeValueF component) */
-CEL_Define(W_Slider, {
+cel_component(W_Slider, {
     const char* label;      /* Slider label text */
     const Widget_SliderStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Toggle: labeled ON/OFF toggle (selection via W_Selectable component) */
-CEL_Define(W_Toggle, {
+cel_component(W_Toggle, {
     const char* label;      /* Toggle label text */
     bool value;             /* Current on/off state */
     const Widget_ToggleStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Cycle: labeled cycle-through-options control (selection via W_Selectable component) */
-CEL_Define(W_Cycle, {
+cel_component(W_Cycle, {
     const char* label;      /* Cycle label text */
     const char* value;      /* Current displayed value string */
     const Widget_CycleStyle* style; /* Visual overrides (NULL = defaults) */
@@ -126,14 +142,14 @@ CEL_Define(W_Cycle, {
  * ============================================================================ */
 
 /* ProgressBar: horizontal progress indicator (value via W_RangeValueF component) */
-CEL_Define(W_ProgressBar, {
+cel_component(W_ProgressBar, {
     const char* label;      /* Progress label text */
     bool color_by_value;    /* Color changes based on value (red->yellow->green) */
     const Widget_ProgressBarStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Metric: label + value display for dashboards */
-CEL_Define(W_Metric, {
+cel_component(W_Metric, {
     const char* label;      /* Metric label */
     const char* value;      /* Formatted value string */
     int status;             /* 0=normal, 1=success, 2=warning, 3=error */
@@ -145,20 +161,20 @@ CEL_Define(W_Metric, {
  * ============================================================================ */
 
 /* Panel: bordered container with optional title */
-CEL_Define(W_Panel, {
+cel_component(W_Panel, {
     const char* title;      /* Panel title (NULL = no title) */
     int border_style;       /* 0=single, 1=double, 2=rounded */
     const Widget_PanelStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Divider: horizontal or vertical separator */
-CEL_Define(W_Divider, {
+cel_component(W_Divider, {
     bool vertical;          /* true = vertical, false = horizontal */
     const Widget_DividerStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Table: key-value table display */
-CEL_Define(W_Table, {
+cel_component(W_Table, {
     int row_count;          /* Number of rows */
     const char** keys;      /* Array of key strings */
     const char** values;    /* Array of value strings */
@@ -166,7 +182,7 @@ CEL_Define(W_Table, {
 });
 
 /* Collapsible: expandable/collapsible content section with title */
-CEL_Define(W_Collapsible, {
+cel_component(W_Collapsible, {
     const char* title;      /* Section title text */
     bool collapsed;         /* true = children hidden, false = expanded */
     int indent;             /* Nesting depth for indentation (0 = top level) */
@@ -174,14 +190,14 @@ CEL_Define(W_Collapsible, {
 });
 
 /* SplitPane: two-region split container with configurable ratio */
-CEL_Define(W_SplitPane, {
+cel_component(W_SplitPane, {
     float ratio;            /* Split ratio for first pane (0.0-1.0, default 0.5) */
     int direction;          /* 0 = horizontal (left|right), 1 = vertical (top|bottom) */
     const Widget_SplitStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* ScrollContainer: generic scrollable viewport with scrollbar gutter */
-CEL_Define(W_ScrollContainer, {
+cel_component(W_ScrollContainer, {
     int height;             /* Viewport height in rows (required, determines visible_count) */
     const Widget_ScrollableStyle* style; /* Visual overrides (NULL = defaults) */
 });
@@ -191,14 +207,14 @@ CEL_Define(W_ScrollContainer, {
  * ============================================================================ */
 
 /* Radio button: individual radio option in a group (selection via W_Selectable component) */
-CEL_Define(W_RadioButton, {
+cel_component(W_RadioButton, {
     const char* label;      /* Radio button label */
     int group_id;           /* Group identifier (links related radios) */
     const Widget_RadioButtonStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Radio group: container for radio button state */
-CEL_Define(W_RadioGroup, {
+cel_component(W_RadioGroup, {
     int group_id;           /* Group identifier */
     int selected_index;     /* Currently selected option index */
     int count;              /* Total number of options */
@@ -210,7 +226,7 @@ CEL_Define(W_RadioGroup, {
  * ============================================================================ */
 
 /* Tab bar: horizontal tab strip with numbered labels */
-CEL_Define(W_TabBar, {
+cel_component(W_TabBar, {
     int active;             /* Index of the currently active tab */
     int count;              /* Total number of tabs */
     const char** labels;    /* Array of tab label strings (count elements) */
@@ -218,14 +234,14 @@ CEL_Define(W_TabBar, {
 });
 
 /* Tab content: placeholder content area for a tab */
-CEL_Define(W_TabContent, {
+cel_component(W_TabContent, {
     const char* text;       /* Main placeholder text (centered) */
     const char* hint;       /* Secondary hint text (centered, below main) */
     const Widget_TabContentStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* Status bar: bottom status line with left and right sections */
-CEL_Define(W_StatusBar, {
+cel_component(W_StatusBar, {
     const char* left;       /* Left-aligned text */
     const char* right;      /* Right-aligned text */
     const Widget_StatusBarStyle* style; /* Visual overrides (NULL = defaults) */
@@ -236,14 +252,14 @@ CEL_Define(W_StatusBar, {
  * ============================================================================ */
 
 /* List view: scrollable list container (scroll via W_Scrollable component) */
-CEL_Define(W_ListView, {
+cel_component(W_ListView, {
     int item_count;         /* Total number of items */
     int selected_index;     /* Currently selected item index */
     const Widget_ListViewStyle* style; /* Visual overrides (NULL = defaults) */
 });
 
 /* List item: individual item in a list view (selection via W_Selectable component) */
-CEL_Define(W_ListItem, {
+cel_component(W_ListItem, {
     const char* label;      /* Item label text */
     void* data;             /* User data pointer */
     const Widget_ListItemStyle* style; /* Visual overrides (NULL = defaults) */
@@ -254,7 +270,7 @@ CEL_Define(W_ListItem, {
  * ============================================================================ */
 
 /* Focusable: tag component marking a widget as keyboard-focusable */
-CEL_Define(W_Focusable, {
+cel_component(W_Focusable, {
     int tab_order;          /* Tab navigation order (0 = auto) */
 });
 
@@ -265,7 +281,7 @@ CEL_Define(W_Focusable, {
 /* Interaction state: unified visual state for all interactive widgets.
  * w_resolve_visual() reads these flags to determine theme-based colors.
  * Composition macros set these from props (Plan 12-03). */
-CEL_Define(W_InteractState, {
+cel_component(W_InteractState, {
     bool focused;       /* Has keyboard focus */
     bool selected;      /* Currently selected/highlighted */
     bool disabled;      /* Interaction disabled */
@@ -286,13 +302,13 @@ CEL_Define(W_InteractState, {
 
 /* Selectable: marks a widget as part of a selection group.
  * Built-in systems will manage selection state within NavigationScopes. */
-CEL_Define(W_Selectable, {
+cel_component(W_Selectable, {
     bool selected;          /* True if currently selected in its group */
 });
 
 /* RangeValueF: bounded float range for sliders, progress bars, etc.
  * Built-in RangeClampF system enforces min <= value <= max each frame. */
-CEL_Define(W_RangeValueF, {
+cel_component(W_RangeValueF, {
     float value;            /* Current value */
     float min;              /* Minimum bound */
     float max;              /* Maximum bound */
@@ -302,7 +318,7 @@ CEL_Define(W_RangeValueF, {
 /* RangeValueI: bounded integer range for step counters, page selectors, etc.
  * Forward-looking infrastructure -- no built-in widget attaches this in Phase 13.
  * Built-in RangeClampI system enforces min <= value <= max each frame. */
-CEL_Define(W_RangeValueI, {
+cel_component(W_RangeValueI, {
     int value;              /* Current value */
     int min;                /* Minimum bound */
     int max;                /* Maximum bound */
@@ -311,7 +327,7 @@ CEL_Define(W_RangeValueI, {
 
 /* Scrollable: scroll state for list views, text areas, etc.
  * Built-in ScrollClamp system enforces scroll_offset bounds each frame. */
-CEL_Define(W_Scrollable, {
+cel_component(W_Scrollable, {
     int scroll_offset;      /* First visible item/line index */
     int total_count;        /* Total number of items/lines */
     int visible_count;      /* Number of visible items/lines */
@@ -322,7 +338,7 @@ CEL_Define(W_Scrollable, {
  * ============================================================================ */
 
 /* TextInput: single-line text entry field configuration (set by composition each frame) */
-CEL_Define(W_TextInput, {
+cel_component(W_TextInput, {
     const char* placeholder;    /* Dim hint text when empty */
     bool multiline;             /* false=single-line (multiline forward-looking, not implemented) */
     bool password;              /* Replace chars with bullet dots (U+2022) */
@@ -335,7 +351,7 @@ CEL_Define(W_TextInput, {
 /* TextInputBuffer: persistent mutable state for text input (NOT reset by composition).
  * The composition attaches this with zero-init; the behavioral system checks
  * buf->initialized to do one-time init, preventing composition from overwriting. */
-CEL_Define(W_TextInputBuffer, {
+cel_component(W_TextInputBuffer, {
     char buffer[256];           /* Text buffer (static size) */
     int cursor_pos;             /* Cursor position in CHARACTERS (not bytes) */
     int length;                 /* Current text length in characters */
@@ -352,14 +368,14 @@ CEL_Define(W_TextInputBuffer, {
 
 /* OverlayState: marks an entity as an overlay with z-ordering and visibility.
  * Used by Widget_Popup, Widget_Modal, Widget_Window, Widget_Toast. */
-CEL_Define(W_OverlayState, {
+cel_component(W_OverlayState, {
     bool visible;       /* Whether the overlay is currently shown */
     int z_index;        /* z-ordering value (higher = on top) */
     bool modal;         /* true = focus-isolating overlay */
 });
 
 /* Toast: auto-dismissing notification overlay */
-CEL_Define(W_Toast, {
+cel_component(W_Toast, {
     const char* message;    /* Toast message text */
     float duration;         /* Auto-dismiss after N seconds (default 3.0) */
     float elapsed;          /* Time since toast appeared */
@@ -370,7 +386,7 @@ CEL_Define(W_Toast, {
 });
 
 /* Popup: centered floating overlay container */
-CEL_Define(W_Popup, {
+cel_component(W_Popup, {
     const char* title;      /* Optional popup title */
     bool visible;           /* Display state */
     bool backdrop;          /* Show dimming backdrop behind popup */
@@ -380,7 +396,7 @@ CEL_Define(W_Popup, {
 });
 
 /* Modal: popup with focus scope isolation + Escape dismiss */
-CEL_Define(W_Modal, {
+cel_component(W_Modal, {
     const char* title;      /* Modal title */
     bool visible;           /* Display state */
     int width;              /* Modal width (0 = 50 default) */
@@ -390,7 +406,7 @@ CEL_Define(W_Modal, {
 });
 
 /* Window: positioned floating panel with title bar and close */
-CEL_Define(W_Window, {
+cel_component(W_Window, {
     const char* title;      /* Window title (shown in title bar) */
     bool visible;           /* Display state */
     int x;                  /* Position X (0 = centered) */
@@ -405,7 +421,7 @@ CEL_Define(W_Window, {
 /* Draggable: behavioral component enabling runtime window repositioning.
  * Attach to a W_Window entity via .draggable=true on Widget_Window.
  * 'm' toggles move mode, arrow keys reposition, Enter/Escape/m exits. */
-CEL_Define(W_Draggable, {
+cel_component(W_Draggable, {
     bool moving;            /* Currently in move mode */
 });
 
@@ -414,7 +430,7 @@ CEL_Define(W_Draggable, {
  * ============================================================================ */
 
 /* Spark: sparkline chart from float array using Unicode block characters */
-CEL_Define(W_Spark, {
+cel_component(W_Spark, {
     const float* values;    /* Pointer to float array (caller-owned, static/global storage) */
     int count;              /* Number of values in array */
     float min;              /* Manual minimum (0 = auto-scale from data) */
@@ -432,7 +448,7 @@ typedef struct W_BarChartEntry {
 } W_BarChartEntry;
 
 /* BarChart: horizontal bar chart with labels, values, and optional gradient */
-CEL_Define(W_BarChart, {
+cel_component(W_BarChart, {
     const W_BarChartEntry* entries; /* Pointer to entry array (caller-owned, static/global) */
     int count;              /* Number of entries */
     float max_value;        /* Manual max value for scaling (0 = auto-scale from data) */
@@ -448,7 +464,7 @@ typedef struct W_LogEntry {
 } W_LogEntry;
 
 /* LogViewer: scrollable, color-coded log viewer with severity filtering */
-CEL_Define(W_LogViewer, {
+cel_component(W_LogViewer, {
     const W_LogEntry* entries;  /* Pointer to log entry array (caller-owned, static/global) */
     int entry_count;            /* Total number of entries */
     int visible_height;         /* Viewport rows */
@@ -458,7 +474,7 @@ CEL_Define(W_LogViewer, {
 
 /* LogViewerState: persistent mutable state for auto-scroll tracking.
  * Zero-initialized by composition; layout function inits once via .initialized flag. */
-CEL_Define(W_LogViewerState, {
+cel_component(W_LogViewerState, {
     bool auto_scroll;       /* true = auto-scroll to bottom on new entries */
     int prev_entry_count;   /* Tracks previous entry count to detect new entries */
     bool initialized;       /* One-time init flag (same pattern as W_TextInputBuffer) */
@@ -476,7 +492,7 @@ typedef struct W_PowerlineSegment {
 } W_PowerlineSegment;
 
 /* Powerline: horizontal bar of colored segments with shaped separators */
-CEL_Define(W_Powerline, {
+cel_component(W_Powerline, {
     const W_PowerlineSegment* segments;  /* Pointer to segment array (static/global) */
     int segment_count;                   /* Number of segments */
     int separator_style;                 /* 0=hard (arrow), 1=round, 2=soft (thin) */
